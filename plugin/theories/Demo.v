@@ -34,7 +34,7 @@ Lemma add_left_O :
   forall (n : nat),
     add_left n O = n.
 Proof.
-  intros. autoinduct add_left n 0; simpl; congruence.
+  intros. autoinduct add_left n O; simpl; congruence.
 Qed.
 
 Lemma add_right_O :
