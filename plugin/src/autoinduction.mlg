@@ -2,12 +2,16 @@ DECLARE PLUGIN "autoinduct-plugin.plugin"
 
 {
 
+  open Ltac_plugin
+  open Stdarg
+
 }
 
-(* Placeholder command to make sure things are set up OK *)
-VERNAC COMMAND EXTEND HelloWorld CLASSIFIED AS SIDEFF
-| [ "Hello" ] ->
-   {
-     Feedback.msg_notice (Pp.str "Hello World!")
-   }
+(*
+ * This is where the autoinduct tactic will be implemented.
+ *)
+TACTIC EXTEND autoinduct_tactic
+| [ "autoinduct" constr(e) ] ->
+   { let _ = Feedback.msg_warning (Pp.str "Autoinduct is not yet implemented!") in
+     Tacticals.tclIDTAC }
 END
