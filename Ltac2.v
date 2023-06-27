@@ -1,13 +1,15 @@
 Require Import Ltac2.Ltac2.
 
-Ltac2 find_reducible_apply () :=
+Ltac2 find_applied f :=
   match! goal with
-  | [ |- context [ ?f ] ] =>
-      match Constr.Unsafe.kind f with
-      | Constr.Unsafe.App f args =>
-          (* this requires a patch to coq to backtrack if f is not reducible *)
-          let f := eval red in $f in
-            (f, args)
+  | [ |- context [ ?t ] ] =>
+      match Constr.Unsafe.kind t with
+      | Constr.Unsafe.App g args =>
+          if Constr.equal f g then
+            let g := eval red in $g in
+              (g, args)
+          else
+            Control.backtrack_tactic_failure "applies a different function"
       | _ => Control.backtrack_tactic_failure "not an application"
       end
   end.
@@ -19,14 +21,16 @@ Ltac2 struct_arg f :=
   | _ => Control.backtrack_tactic_failure "not a fixpoint"
   end.
 
-Ltac2 autoinduct () :=
-  let (f, args) := find_reducible_apply () in
-  let main_arg := Array.get args (struct_arg f) in
+Ltac2 autoinduct f :=
+  let (g, args) := find_applied f in
+  let main_arg := Array.get args (struct_arg g) in
   induction $main_arg.
 
-Ltac2 Notation "autoinduct" := (autoinduct()).
+Ltac2 Notation "autoinduct" f(constr) := (autoinduct f).
+
+Print Nat.add.
 
 Goal forall n, n + 0 = n.
   intros.
-  autoinduct ;simpl;ltac1:(congruence).
+  autoinduct Nat.add;simpl;ltac1:(congruence).
 Qed.
