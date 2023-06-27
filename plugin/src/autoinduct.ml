@@ -59,7 +59,25 @@ let lookup_definition env def sigma =
 let eequal trm1 trm2 sigma =
   sigma, Constr.equal (EConstr.to_constr sigma trm1) (EConstr.to_constr sigma trm2)
 
+(* Push a local binding to an environment *)
+let push_local (n, t) env =
+  EConstr.push_rel Context.Rel.Declaration.(LocalAssum (n, t)) env
+
 (* --- Implementation --- *)
+
+(*
+ * Get the recursive argument index
+ *)
+let rec recursive_argument env f_body sigma =
+  match kind sigma f_body with
+  | Constr.Fix ((rec_indexes, i), _) -> Array.get rec_indexes i
+  | Constr.Lambda (n, t, b) ->
+     let env_b = push_local (n, t) env in
+     1 + (recursive_argument env_b b sigma)
+  | Constr.Const (c, u) ->
+     recursive_argument env (lookup_definition env f_body sigma) sigma
+  | _ ->
+     CErrors.user_err (Pp.str "The supplied function is not a ")
 
 (*
  * Inner implementation of autoinduct tactic
@@ -67,6 +85,7 @@ let eequal trm1 trm2 sigma =
  * It also does not have any useful error message when it doesn't find the function; it just does idtac
  * It also requires exact equality (rather than convertibility) for the function and all of its arguments
  * It also doesn't stop itself if the chosen argument is a constant, and doesn't backtrack
+ * It also doesn't support nested fixpoints
  *)
 let rec do_autoinduct env concl f f_args sigma =
   match kind sigma concl with
@@ -76,7 +95,8 @@ let rec do_autoinduct env concl f f_args sigma =
        if Array.length f_args = Array.length g_args then
          let sigma, args_eq = forall2_state_array eequal f_args g_args sigma in
          if args_eq then 
-           let _ = lookup_definition env f sigma in
+           let f_body = lookup_definition env f sigma in
+           let _ = recursive_argument env f_body sigma in
            let _ = Feedback.msg_warning (Pp.str "Found the right term! But autoinduct's app case is not yet fully implemented!") in
            Tacticals.tclIDTAC
          else
