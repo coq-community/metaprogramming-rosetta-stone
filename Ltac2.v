@@ -28,8 +28,6 @@ Ltac2 autoinduct f :=
 
 Ltac2 Notation "autoinduct" f(constr) := (autoinduct f).
 
-Print Nat.add.
-
 Goal forall n, n + 0 = n.
   intros.
   autoinduct Nat.add;simpl;ltac1:(congruence).
