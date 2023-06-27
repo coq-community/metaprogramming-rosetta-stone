@@ -1,7 +1,11 @@
 (*
  * This is a modification of a tactic implemented for CS 598 on
  * proof automation intially.
+ *
+ * We'll build on some tactics from StructTact, and also build a new tactic
+ * in the style of StructTact. This imports the StructTact library so we can do that:
  *)
+Require Import StructTact.StructTactics.
 
 (*
  * We are going to use our tactics to write proofs about the natural numbers.
@@ -39,6 +43,10 @@ Fixpoint add_right (n m : nat) : nat :=
  * we won't have to change the details of our proofs. In that way, we will make
  * our proofs more robust.
  *)
+
+Ltac in_reduced f t :=
+  let f_red := eval red in f in (* reduce f, but leave goal alone *)
+  ltac:(t f_red).               (* run the next tactic on f_red *)
 
 (*
  * The tactic in_reduced_f matches over a goal, finds a function f applied to arguments
@@ -122,6 +130,8 @@ Proof.
 Qed.
 
 End V1.
+
+Import V1.
 
 Module V2.
 
