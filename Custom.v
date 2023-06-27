@@ -52,9 +52,9 @@ Ltac in_reduced f t :=
  * The tactic in_reduced_f matches over a goal, finds a function f applied to arguments
  * x and y, and then applies tactical t to x, y, and the reduced f.
  *)
-Ltac in_reduced_f t :=
+Ltac in_reduced_f f t :=
   match goal with
-  | [ |- context [ ?f ?x ?y ] ] =>
+  | [ |- context [ f ?x ?y ] ] =>
     in_reduced f ltac:(t x y)
   end.
 
@@ -64,8 +64,8 @@ Module V1.
  * The first version of autoinduct makes some extra assumptions, but doesn't rely on
  * StructTact or anything else.
  *)
-Ltac autoinduct :=
-  in_reduced_f ltac:(fun x y f =>
+Ltac autoinduct f :=
+  in_reduced_f f ltac:(fun x y f =>
     lazymatch f with
     | (fix f n m {struct m} := @?body f n m) =>
       induction y
@@ -73,49 +73,41 @@ Ltac autoinduct :=
       induction x
     end).
 
-(*
- * Our proofs of add_left_O and add_right_O are identical!
- *)
+(* --- Some tests --- *) 
+
 Lemma add_left_O :
   forall (n : nat),
     add_left n O = n.
 Proof.
-  intros; autoinduct; simpl; congruence.
+  intros; autoinduct add_left; simpl; congruence.
 Qed.
 
 Lemma add_right_O :
   forall (m : nat),
     add_right O m = m.
 Proof.
-  intros; autoinduct; simpl; congruence.
+  intros; autoinduct add_right; simpl; congruence.
 Qed.
 
-(*
- * Likewise for the successor case!
- *)
 Lemma add_left_S :
   forall (n m : nat),
     S (add_left n m) = add_left n (S m).
 Proof.
-  intros; autoinduct; simpl; congruence.
+  intros; autoinduct add_left; simpl; congruence.
 Qed.
 
 Lemma add_right_S :
   forall (n m : nat),
     S (add_right n m) = add_right (S n) m.
 Proof.
-  intros; autoinduct; simpl; congruence.
+  intros; autoinduct add_right; simpl; congruence.
 Qed.
 
-(*
- * For add_right_comm and add_left_comm, the only thing that changes is
- * which lemmas we apply:
- *)
 Lemma add_left_comm:
   forall (n m : nat),
     add_left n m = add_left m n.
 Proof.
-  intros; autoinduct; simpl.
+  intros; autoinduct add_left; simpl.
   - symmetry. apply add_left_O.
   - find_higher_order_rewrite. apply add_left_S.
 Qed.
@@ -124,7 +116,7 @@ Lemma add_right_comm:
   forall (n m : nat),
     add_right n m = add_right m n.
 Proof.
-  intros; autoinduct; simpl.
+  intros; autoinduct add_right; simpl.
   - symmetry. apply add_right_O.
   - find_higher_order_rewrite. apply add_right_S.
 Qed.
@@ -140,8 +132,8 @@ Module V2.
  * some of them.
  *)
 
-Ltac autoinduct_body :=
-  in_reduced_f ltac:(fun x y f =>
+Ltac autoinduct_body f :=
+  in_reduced_f f ltac:(fun x y f =>
     lazymatch f with
     | (fix f n m {struct m} := @?body f n m) =>
       try (rememberNonVars y); generalizeEverythingElse y; induction y
@@ -149,13 +141,13 @@ Ltac autoinduct_body :=
       try (rememberNonVars x); generalizeEverythingElse x; induction x
     end).
 
-Ltac autoinduct := intros; autoinduct_body.
+Ltac autoinduct f := intros; autoinduct_body f.
 
 Lemma add_right_comm:
   forall (n m : nat),
     add_right n m = add_right m n.
 Proof.
-  autoinduct; intros; simpl.
+  autoinduct add_right; intros; simpl.
   - symmetry. apply add_right_O.
   - find_higher_order_rewrite. apply add_right_S.
 Qed.
@@ -164,7 +156,7 @@ Lemma add_left_comm:
   forall (n m : nat),
     add_left n m = add_left m n.
 Proof.
-  autoinduct; intros; simpl.
+  autoinduct add_left; intros; simpl.
   - symmetry. apply add_left_O.
   - find_higher_order_rewrite. apply add_left_S.
 Qed.
