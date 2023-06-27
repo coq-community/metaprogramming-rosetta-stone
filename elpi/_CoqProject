@@ -1,0 +1,4 @@
+-R theories Autoinduct
+
+theories/Tactic.v
+theories/Autoinduct.v
