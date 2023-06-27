@@ -49,3 +49,11 @@ Goal forall n, n + 0 = n.
   Succeed (autoinduct;simpl;ltac1:(congruence)).
   autoinduct Nat.add;simpl;ltac1:(congruence).
 Qed.
+
+Require Import List.
+
+Goal forall l : list nat, l ++ nil = l.
+Proof.
+  intros.
+  autoinduct app;simpl;ltac1:(congruence).
+Qed.
