@@ -1,0 +1,1 @@
+From Autoinduct Require Export Tactic.
