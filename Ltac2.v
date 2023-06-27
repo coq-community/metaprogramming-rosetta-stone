@@ -33,8 +33,6 @@ Ltac2 find_applied f :=
       end
   end.
 
-(* might want to call this in find_reducible_apply so match goal will backtrack *)
-
 Ltac2 autoinduct0 f :=
   let f := Option.map (fun f => (f, struct_arg (eval red in $f))) f in
   let arg := find_applied f in
@@ -44,8 +42,24 @@ Ltac2 Notation "autoinduct" f(constr) := (autoinduct0 (Some f)).
 
 Ltac2 Notation "autoinduct" := (autoinduct0 None).
 
+(* called from Ltac2 (ltac2 doesn't expose congruence so go through ltac1 for it) *)
 Goal forall n, n + 0 = n.
   intros.
   Succeed (autoinduct;simpl;ltac1:(congruence)).
   autoinduct Nat.add;simpl;ltac1:(congruence).
+Qed.
+
+(* called from ltac1 *)
+
+Ltac autoinduct :=
+  ltac2:(f |-
+    let f :=
+      Option.get (Ltac1.to_constr f)
+    in
+    autoinduct0 (Some f)).
+Set Default Proof Mode "Classic".
+
+Goal forall n, n + 0 = n.
+  intros.
+  autoinduct Nat.add;simpl;congruence.
 Qed.
