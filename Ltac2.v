@@ -4,9 +4,10 @@ Require Import Ltac2.Ltac2.
    there are no focused goals) *)
 Ltac2 fail s := Control.backtrack_tactic_failure s.
 
-Ltac2 struct_arg f :=
+Ltac2 rec struct_arg f :=
   match Constr.Unsafe.kind f with
   | Constr.Unsafe.Fix structs which _ _ => Array.get structs which
+  | Constr.Unsafe.Lambda _ body => Int.add 1 (struct_arg body)
   | _ => fail "not a fixpoint"
   end.
 
