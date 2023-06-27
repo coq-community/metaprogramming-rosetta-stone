@@ -5,11 +5,20 @@ Ltac2 find_applied f :=
   | [ |- context [ ?t ] ] =>
       match Constr.Unsafe.kind t with
       | Constr.Unsafe.App g args =>
-          if Constr.equal f g then
-            let g := eval red in $g in
-              (g, args)
-          else
-            Control.backtrack_tactic_failure "applies a different function"
+          let f :=
+            match f with
+            | Some f =>
+                if Constr.equal f g then
+                  f
+                else
+                  Control.backtrack_tactic_failure "applies a different function"
+            | None =>
+                if Constr.is_const g then g
+                else Control.backtrack_tactic_failure "not a constant"
+            end
+          in
+          let f := eval red in $f in
+          (f, args)
       | _ => Control.backtrack_tactic_failure "not an application"
       end
   end.
@@ -21,14 +30,17 @@ Ltac2 struct_arg f :=
   | _ => Control.backtrack_tactic_failure "not a fixpoint"
   end.
 
-Ltac2 autoinduct f :=
+Ltac2 autoinduct0 f :=
   let (g, args) := find_applied f in
   let main_arg := Array.get args (struct_arg g) in
   induction $main_arg.
 
-Ltac2 Notation "autoinduct" f(constr) := (autoinduct f).
+Ltac2 Notation "autoinduct" f(constr) := (autoinduct0 (Some f)).
+
+Ltac2 Notation "autoinduct" := (autoinduct0 None).
 
 Goal forall n, n + 0 = n.
   intros.
+  Succeed (autoinduct;simpl;ltac1:(congruence)).
   autoinduct Nat.add;simpl;ltac1:(congruence).
 Qed.
