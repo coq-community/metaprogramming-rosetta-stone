@@ -96,9 +96,13 @@ let rec do_autoinduct env concl f f_args sigma =
          if args_eq then 
            let f_body = lookup_definition env f sigma in
            let arg_no = recursive_argument env f_body sigma in
+           Feedback.msg_notice (Pp.int arg_no);
            let arg = Array.get g_args arg_no in
+           Feedback.msg_notice (Printer.pr_econstr_env env sigma arg);
            let dest_arg = (Some true), Tactics.ElimOnConstr (fun env sigma -> sigma, (arg, Tactypes.NoBindings)) in
-           Tactics.induction_destruct true false ([(dest_arg, (None, None), None)], None)
+           Proofview.tclBIND
+             (Tactics.induction_destruct true false ([(dest_arg, (None, None), None)], None))
+             (fun _ -> Feedback.msg_notice (Pp.str "hi"); Tacticals.tclIDTAC)
          else
            Tacticals.tclIDTAC
        else
