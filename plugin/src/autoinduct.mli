@@ -1,4 +1,4 @@
 (*
  * Interface for implementation of autoinduct tactic
  *)
-val autoinduct : Names.Id.t -> unit Proofview.tactic
+val autoinduct : EConstr.t -> EConstr.t array -> unit Proofview.tactic

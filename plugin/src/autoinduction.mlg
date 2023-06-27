@@ -9,9 +9,9 @@ DECLARE PLUGIN "autoinduct-plugin.plugin"
 }
 
 (*
- * This is where the autoinduct tactic will be implemented.
+ * This is where the autoinduct tactic is implemented.
  *)
 TACTIC EXTEND autoinduct_tactic
-| [ "autoinduct" ident(i) ] ->
-   { autoinduct i }
+| [ "autoinduct" constr(f) constr_list(args) ] ->
+   { autoinduct f (Array.of_list args) }
 END
