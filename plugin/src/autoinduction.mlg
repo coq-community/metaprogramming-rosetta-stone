@@ -4,6 +4,7 @@ DECLARE PLUGIN "autoinduct-plugin.plugin"
 
   open Ltac_plugin
   open Stdarg
+  open Autoinduct
 
 }
 
@@ -11,7 +12,6 @@ DECLARE PLUGIN "autoinduct-plugin.plugin"
  * This is where the autoinduct tactic will be implemented.
  *)
 TACTIC EXTEND autoinduct_tactic
-| [ "autoinduct" constr(e) ] ->
-   { let _ = Feedback.msg_warning (Pp.str "Autoinduct is not yet implemented!") in
-     Tacticals.tclIDTAC }
+| [ "autoinduct" ident(i) ] ->
+   { autoinduct i }
 END

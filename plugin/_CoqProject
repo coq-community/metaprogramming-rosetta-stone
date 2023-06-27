@@ -5,5 +5,7 @@
 theories/Loader.v
 theories/Demo.v
 
+src/autoinduct.ml
+src/autoinduct.mli
 src/autoinduction.mlg
 src/autoinduct_plugin.mlpack
