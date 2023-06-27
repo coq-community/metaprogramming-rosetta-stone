@@ -162,3 +162,46 @@ Proof.
 Qed.
 
 End V2.
+
+Module V3.
+
+(*
+ * This version is more heuristic but tries to pick a 
+ * function automatically, too.
+ *)
+Ltac in_reduced_f_guess t :=
+  match goal with
+  | [ |- context [ ?f ?x ?y ] ] =>
+    in_reduced f ltac:(t x y)
+  end.
+
+Ltac autoinduct_body :=
+  in_reduced_f_guess ltac:(fun x y f =>
+    lazymatch f with
+    | (fix f n m {struct m} := @?body f n m) =>
+      try (rememberNonVars y); generalizeEverythingElse y; induction y
+    | (fix f n m {struct n} := @?body f n m) =>
+      try (rememberNonVars x); generalizeEverythingElse x; induction x
+    end).
+
+Ltac autoinduct := intros; autoinduct_body.
+
+Lemma add_right_comm:
+  forall (n m : nat),
+    add_right n m = add_right m n.
+Proof.
+  autoinduct; intros; simpl.
+  - symmetry. apply add_right_O.
+  - find_higher_order_rewrite. apply add_right_S.
+Qed.
+
+Lemma add_left_comm:
+  forall (n m : nat),
+    add_left n m = add_left m n.
+Proof.
+  autoinduct; intros; simpl.
+  - symmetry. apply add_left_O.
+  - find_higher_order_rewrite. apply add_left_S.
+Qed.
+
+End V3.
