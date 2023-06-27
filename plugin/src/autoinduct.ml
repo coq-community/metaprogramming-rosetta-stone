@@ -85,7 +85,6 @@ let rec recursive_argument env f_body sigma =
  * It also does not have any useful error message when it doesn't find the function; it just does idtac
  * It also requires exact equality (rather than convertibility) for the function and all of its arguments
  * It also doesn't stop itself if the chosen argument is a constant, and doesn't backtrack
- * It also doesn't support nested fixpoints
  *)
 let rec do_autoinduct env concl f f_args sigma =
   match kind sigma concl with
@@ -96,9 +95,10 @@ let rec do_autoinduct env concl f f_args sigma =
          let sigma, args_eq = forall2_state_array eequal f_args g_args sigma in
          if args_eq then 
            let f_body = lookup_definition env f sigma in
-           let _ = recursive_argument env f_body sigma in
-           let _ = Feedback.msg_warning (Pp.str "Found the right term! But autoinduct's app case is not yet fully implemented!") in
-           Tacticals.tclIDTAC
+           let arg_no = recursive_argument env f_body sigma in
+           let arg = Array.get g_args arg_no in
+           let dest_arg = (Some true), Tactics.ElimOnConstr (fun env sigma -> sigma, (arg, Tactypes.NoBindings)) in
+           Tactics.induction_destruct true false ([(dest_arg, (None, None), None)], None)
          else
            Tacticals.tclIDTAC
        else
