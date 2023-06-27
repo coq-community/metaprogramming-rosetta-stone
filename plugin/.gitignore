@@ -7,6 +7,8 @@ src/*.cml
 src/*.d
 src/*.cmx
 src/*.cmxa
+src/*.cmt
+src/*.cmti
 src/*.o
 src/*~
 src/*.a
