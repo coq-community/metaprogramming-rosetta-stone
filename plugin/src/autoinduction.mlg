@@ -1,0 +1,13 @@
+DECLARE PLUGIN "autoinduct-plugin.plugin"
+
+{
+
+}
+
+(* Placeholder command to make sure things are set up OK *)
+VERNAC COMMAND EXTEND HelloWorld CLASSIFIED AS SIDEFF
+| [ "Hello" ] ->
+   {
+     Feedback.msg_notice (Pp.str "Hello World!")
+   }
+END

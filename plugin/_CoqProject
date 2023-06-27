@@ -1,0 +1,9 @@
+-generate-meta-for-package autoinduct-plugin
+-R theories Autoinduction
+-I src
+
+theories/Loader.v
+theories/Demo.v
+
+src/autoinduction.mlg
+src/autoinduct_plugin.mlpack
