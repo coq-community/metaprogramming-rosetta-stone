@@ -47,6 +47,7 @@ details specific to the OCaml code
 
 ## LTac1
 
+To compile the Ltac version, you will need [StructTact](https://github.com/uwplse/StructTact).
 The code is in [this file](ltac/Ltac1.v)
 
 <details>
@@ -59,7 +60,6 @@ details specific to the Ltac1 code
 
 ## LTac2
 
-To compile the Ltac version, you will need [StructTact](https://github.com/uwplse/StructTact).
 The code is in [this file](ltac/Ltac2.v)
 
 <details>

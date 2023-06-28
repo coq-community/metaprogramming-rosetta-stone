@@ -18,60 +18,56 @@ Fixpoint add_right (n m : nat) : nat :=
   | S p => S (add_right n p)
   end.
 
+Module Step0.
+
 Lemma add_left_O : forall (n : nat), add_left n O = n.
 Proof.
   intros.
-  (* autoinduct on (add_left n O). *)
-  (* autoinduct on add_left. *)
-  autoinduct.
+  autoinduct on (add_left n O) || (idtac "step0 fails"; induction n).
   all: (simpl; congruence).
 Qed.
  
 Lemma add_right_O : forall (m : nat), add_right O m = m.
 Proof.
   intros.
-  (* autoinduct on (add_right O m). *)
-  (* autoinduct on add_right. *)
-  autoinduct.
+  autoinduct on (add_right O m) || (idtac "step0 fails"; induction m).
   all: (simpl; congruence).
-Qed.
- 
-Lemma add_left_S : forall (n m : nat), S (add_left n m) = add_left n (S m).
-Proof.
-  intros.
-  (* autoinduct on (add_left n m). *)
-  (* autoinduct on add_left. *)
-  autoinduct.
-  all: (simpl; congruence).
-Qed.
- 
-Lemma add_right_S : forall (n m : nat), S (add_right n m) = add_right (S n) m.
-Proof.
-  intros.
-  (* autoinduct on (add_right n m). *)
-  (* autoinduct on add_right. *)
-  autoinduct.
-  all: (simpl; congruence).
-Qed.
- 
-Lemma add_left_comm : forall (n m : nat), add_left n m = add_left m n.
-Proof.
-  intros.
-  (* autoinduct on (add_left n m). *)
-  (* autoinduct on add_left. *)
-  autoinduct.
-  all: simpl.
-  - symmetry. apply add_left_O.
-  - rewrite IHn. apply add_left_S.
 Qed.
 
-Lemma add_right_comm : forall (n m : nat), add_right n m = add_right m n.
+End Step0.
+
+Module Step1.
+
+Lemma add_left_O : forall (n : nat), add_left n O = n.
 Proof.
   intros.
-  (* autoinduct on (add_right n m). *)
-  (* autoinduct on add_right. *)
-  autoinduct.
-  all: simpl.
-  - symmetry. apply add_right_O.
-  - rewrite IHm. apply add_right_S.
+  autoinduct on add_left || (idtac "step1 fails"; induction n).
+  all: (simpl; congruence).
 Qed.
+ 
+Lemma add_right_O : forall (m : nat), add_right O m = m.
+Proof.
+  intros.
+  autoinduct on add_right  || (idtac "step1 fails"; induction m).
+  all: (simpl; congruence).
+Qed.
+
+End Step1.
+
+Module Step2.
+
+Lemma add_left_O : forall (n : nat), add_left n O = n.
+Proof.
+  intros.
+  autoinduct || (idtac "step2 fails"; induction n).
+  all: (simpl; congruence).
+Qed.
+ 
+Lemma add_right_O : forall (m : nat), add_right O m = m.
+Proof.
+  intros.
+  autoinduct || (idtac "step2 fails"; induction m).
+  all: (simpl; congruence).
+Qed.
+
+End Step2.
