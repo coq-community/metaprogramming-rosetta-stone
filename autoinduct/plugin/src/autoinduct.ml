@@ -2,16 +2,6 @@ open Proofview
 open EConstr
 open Environ
 
-(* --- Useful higher-order functions, mostly from https://github.com/uwplse/coq-plugin-lib --- *)
-
-(* Like List.fold_left, but threading state *)
-let fold_left_state f b l sigma =
-  List.fold_left (fun (sigma, b) a -> f b a sigma) (sigma, b) l
-
-(* Like fold_left_state, but over arrays *)
-let fold_left_state_array f b args =
-  fold_left_state f b (Array.to_list args)
-
 (* --- Useful Coq utilities, adapted from coq-plugin-lib with help from Gaetan --- *)
 
 (*
@@ -53,37 +43,55 @@ let rec recursive_argument env f_body sigma =
 
 (*
  * Inner implementation of autoinduct tactic
- * The current version supports just nested applications for now
- * It's Part 2 out of 3, so requires explicit arguments
+ * The current version does not go under binders
+ * It's Part 2 out of 3, so requires the function explicitly, but no arguments
  * It also does not have the most useful error messages
  * It also requires exact equality (rather than convertibility) for the function and all of its arguments
  * It also may not stop itself if the chosen argument is not inductive (have not tested yet; it may, actually)
  *)
-let rec do_autoinduct env concl f sigma =
-  match kind sigma concl with
-  | Constr.App (g, g_args) ->
-     let sigma, f_eq = eequal f g sigma in
-     if f_eq then
-       let f_body = lookup_definition env f sigma in
-       let arg_no = recursive_argument env f_body sigma in
-       if arg_no < Array.length g_args then
-         let arg = Array.get g_args arg_no in
-         let dest_arg = (Some true), Tactics.ElimOnConstr (fun env sigma -> sigma, (arg, Tactypes.NoBindings)) in
-         Tactics.induction_destruct true false ([(dest_arg, (None, None), None)], None)
-       else
-         Tacticals.tclFAIL (Pp.str "Wrong number of arguments")
-     else
-       let _, t =
-         fold_left_state_array
-           (fun t a sigma ->
-             sigma, Tacticals.tclOR t (do_autoinduct env a f sigma))
-           (Tacticals.tclFAIL (Pp.str "Function is not applied to any arguments"))
-           g_args
-           sigma
-       in t
-  | _ ->
-     Tacticals.tclFAIL (Pp.str "Could not find anything to induct over")
+let find_autoinduct env concl f sigma =
+  let rec aux under_binders (sigma, found) concl =
+    if under_binders then
+      sigma, found
+    else
+      let (sigma, found) =
+        match kind sigma concl with
+        | Constr.App (g, g_args) ->
+          let sigma, f_eq = eequal f g sigma in
+          if f_eq then
+            let f_body = lookup_definition env f sigma in
+            let arg_no = recursive_argument env f_body sigma in
+            if arg_no < Array.length g_args then
+              let arg = Array.get g_args arg_no in
+              sigma, arg :: found
+            else
+              sigma, found
+          else
+            sigma, found
+        | _ ->
+           sigma, found
+      in EConstr.fold_with_binders sigma (fun _ -> true) aux under_binders (sigma, found) concl
+  in aux false (sigma, []) concl
 
+(*
+ * Given the argument to induct over, invoke the induction tactic
+ *)
+let induct_on arg =
+  let dest_arg = Some true, Tactics.ElimOnConstr (fun _ sigma -> sigma, (arg, Tactypes.NoBindings)) in
+  Tactics.induction_destruct true false ([dest_arg, (None, None), None], None)
+
+(*
+ * Find possible arguments to suggest inducting over
+ * Try just the first one (which is last in the list of arguments)
+ *)
+let do_autoinduct env concl f sigma =
+  let sigma, induct_args = find_autoinduct env concl f sigma in
+  if CList.is_empty induct_args then
+    Tacticals.tclFAIL (Pp.str "Could not find anything to induct over")
+  else
+    tclBIND
+      (Proofview.Unsafe.tclEVARS sigma)
+      (fun () -> Tacticals.tclFIRST (List.map induct_on (List.rev induct_args)))
 (*
  * Implementation of autoinduct tactic, top level
  *)
