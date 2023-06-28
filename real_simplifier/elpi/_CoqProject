@@ -1,0 +1,6 @@
+-R theories RealSimplify
+-R elpi RealSimplify.Elpi
+
+theories/Theory.v
+theories/Tactic.v
+theories/RealSimplify.v

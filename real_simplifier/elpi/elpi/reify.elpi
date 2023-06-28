@@ -1,0 +1,28 @@
+pred reify i:term, o:term.
+
+reify ({{ IZR lp:Z }} as E) R :-
+  if (zliteral Z) (R = {{ ER_Z lp:Z }}) (R = {{ ER_R lp:E }}).
+reify ({{ Q2R lp:Q }} as E) R :-
+  if (qliteral Q) (R = {{ ER_Q lp:Q }}) (R = {{ ER_R lp:E }}).
+reify {{ (- lp:A)%R }} {{ ER_Unary EU_Opp lp:RA }} :- reify A RA.
+reify {{ (/ lp:A)%R }} {{ ER_Unary EU_Inv lp:RA }} :- reify A RA.
+reify {{ (lp:A + lp:B)%R }} {{ ER_Binary EB_Add lp:RA lp:RB }} :- reify A RA, reify B RB.
+reify {{ (lp:A - lp:B)%R }} {{ ER_Binary EB_Sub lp:RA lp:RB }} :- reify A RA, reify B RB.
+reify {{ (lp:A * lp:B)%R }} {{ ER_Binary EB_Mul lp:RA lp:RB }} :- reify A RA, reify B RB.
+reify {{ (lp:A / lp:B)%R }} {{ ER_Binary EB_Div lp:RA lp:RB }} :- reify A RA, reify B RB.
+reify {{ Rmax lp:A lp:B }} {{ ER_Binary EB_Max lp:RA lp:RB }} :- reify A RA, reify B RB.
+reify {{ Rmin lp:A lp:B }} {{ ER_Binary EB_Min lp:RA lp:RB }} :- reify A RA, reify B RB.
+reify A {{ ER_R lp:A }}.
+
+pred zliteral i:term.
+zliteral {{ Z0 }}.
+zliteral {{ Zpos lp:P }} :- pliteral P.
+zliteral {{ Zneg lp:P }} :- pliteral P.
+
+pred pliteral i:term.
+pliteral {{ xI lp:P }} :- pliteral P.
+pliteral {{ xO lp:P }} :- pliteral P.
+pliteral {{ xH }}.
+
+pred qliteral i:term.
+qliteral {{ (lp:N # lp:D)%Q }} :- zliteral N, pliteral D.
