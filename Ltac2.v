@@ -4,6 +4,14 @@ Require Import Ltac2.Ltac2.
    there are no focused goals) *)
 Ltac2 fail s := Control.backtrack_tactic_failure s.
 
+(* If you don't want to use Unsafe.kind, but can only handle fixpoints with 2 arguments *)
+Ltac2 naive_struct_arg f :=
+  lazy_match! f with
+  (* `fix f n m {struct n} := bla` and `fix f n {struct n} := fun m => bla` are the same thing so this handles both arity 1 and arity 2 when the first argument is the structural argument *)
+  | (fix f n {struct n} := _) => 0
+  | (fix f n m {struct m} := _) => 1
+  end.
+
 Ltac2 rec struct_arg f :=
   match Constr.Unsafe.kind f with
   | Constr.Unsafe.Fix structs which _ _ => Array.get structs which
