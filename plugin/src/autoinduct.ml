@@ -77,7 +77,7 @@ let rec recursive_argument env f_body sigma =
   | Constr.Const (c, u) ->
      recursive_argument env (lookup_definition env f_body sigma) sigma
   | _ ->
-     CErrors.user_err (Pp.str "The supplied function is not a ")
+     CErrors.user_err (Pp.str "The supplied function is not a fixpoint")
 
 (*
  * Inner implementation of autoinduct tactic
