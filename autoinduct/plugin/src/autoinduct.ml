@@ -92,6 +92,7 @@ let do_autoinduct env concl f sigma =
     tclBIND
       (Proofview.Unsafe.tclEVARS sigma)
       (fun () -> Tacticals.tclFIRST (List.map induct_on (List.rev induct_args)))
+
 (*
  * Implementation of autoinduct tactic, top level
  *)
