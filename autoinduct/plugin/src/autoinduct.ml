@@ -28,7 +28,7 @@ let lookup_definition env def sigma =
 
 (* Equal but convert to constr (maybe this exists already in the Coq API) *)
 let eequal trm1 trm2 sigma =
-  sigma, Constr.equal (EConstr.to_constr sigma trm1) (EConstr.to_constr sigma trm2)
+  sigma, EConstr.eq_constr sigma trm1 trm2
 
 (* Push a local binding to an environment *)
 let push_local (n, t) env =
@@ -52,8 +52,8 @@ let rec recursive_argument env f_body sigma =
 
 (*
  * Inner implementation of autoinduct tactic
- * The current version supports only nested applications, and doesn't support every kind of subterm yet
- * It's Part 1 out of 3, so requires explicit arguments
+ * The current version supports just nested applications for now
+ * It's Part 2 out of 3, so requires explicit arguments
  * It also does not have the most useful error messages
  * It also requires exact equality (rather than convertibility) for the function and all of its arguments
  * It also may not stop itself if the chosen argument is not inductive (have not tested yet; it may, actually)
