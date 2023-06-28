@@ -1,24 +1,35 @@
 (** * Reflexive tactic to compute real expressions using Q arithmetic *)
 
 (** This is similar to field_simplify, but
-    - it handled min and max
+    - it handles min and max
     - it is easier to extend with additional functions which are computable in Q (like modulus)
-    - does not change the term structure except for computation (which can be an advantage or disadvantage)
+    - it does not change the term structure except for computation (which can be an advantage or disadvantage)
+    - it does not simplify a^b, because b is in nat, so one would need a nat/Z simplifier in addition
 
     A few notes:
-    - not converting the handled terms fully to an AST type and relying on computation with explicit delta lists is "quick and dirty" but quite effective
+    - this is a reflexive tactic, which means the relevant context (a ℝ term) is converted to a gallina data structure and the
+      majority of the work (the simplification and computation) is done by gallina functions
+    - the advantage of reflexive tatics is that one can prove upfront that the transformations done by gallina functions are correct
+    - in this case this means the equality of the original and simplified term is proven by application of a generic lemma
+    - this is much faster than constructing and type checking equality lemmas for individual cases
+    - reflexive tactics typically have these components:
+      - a reification tactic which converts the relevant contet to an AST in gallina
+      - an interpretation tactic which converts the AST back to the original term (the inverse of reification)
+      - some processing function on the AST (written in gallina)
+      - a proof that the processing function has certain properties (in this case preserves equality in ℝ of the intepretation of the AST)
+      - a wrapper tactic, which does the reification, posts the above proof, computes in the type of the proof and applies this in some form
+    - this specific instance of a reflexive tactic takes a short cut:
+      - terms which are not "understood" by the tactic, say variables or unknown functions are copied literally
+      - not converting the handled terms fully to an AST type and relying on computation with explicit delta lists is "quick and dirty" but quite effective
       - the correctness proofs tend to be substantially more complicated if some form of context management is required
-    - it is mostly intended to fully compute terms in ℝ which use only ℚ arithmetic
-    - terms which are not "understood" by the tactic, say variables are unknown functions are copied literally
-    - the currently does not support a^b, because b is in nat, so one would need a nat/Z simplifier in addition
+      - the down side of this method is that if the user supplied term or context does contain symbold of the domain the tactic computes in (ℚ, ℤ, pos in this case)
+        the terms can blow up
+      - to avoid this one option is to copy the Q, Z and Pos functions used and use these copies (assuming that these copies do not occur in the user supplied term)
     
     Caveats:
-    - this does ℚ, ℤ and Pos computation. If the term includes computations in these domains with variables, things might explode
-    - to avoid this one option is to copy the Q, Z and Pos functions used and use these copies (assuming that these copies do not occur in the user supplied term)
-    - another alternative is to "remember" all non understood terms upfront, compute and substitute them back
-      - this has the additional advantage that a full compute with vm or native compute can be used
-      - as is this one has to restrict computation to certain symbols, which vm and native compute do not support
-    *)
+    - this tactic does ℚ, ℤ and Pos computation on parts of the supplied term
+    - if the term includes computations with variables in these domains, the term might explode
+*)
 
 Require Import Reals.
 Require Import ZArith.
@@ -48,14 +59,14 @@ Inductive Expr_BinaryOp :=
 Inductive ExprReal : Set :=
   | ER_Q      : Q -> ExprReal (* This is used for everything we can evaluate *)
   | ER_R      : R -> ExprReal (* This is used for everything we cannot evaluate *)
-  | ER_Z      : Z -> ExprReal (* We could use Q for Z, but then we cannot represent the goal in the left hand side of the equality *)
+  | ER_Z      : Z -> ExprReal (* We could use Q for Z, but then interpretation would not be an inverse of reification *)
   | ER_Unary  : Expr_UnaryOp -> ExprReal -> ExprReal
   | ER_Binary : Expr_BinaryOp -> ExprReal -> ExprReal -> ExprReal
 .
 
 (** ** Interpretation and simplification functions *)
 
-(** Return the ℝ function correspodning to an unary operator *)
+(** Return the ℝ function corresponding to an unary operator *)
 
 Definition unary_fun (f : Expr_UnaryOp) : R->R :=
   match f with
@@ -63,7 +74,7 @@ Definition unary_fun (f : Expr_UnaryOp) : R->R :=
   | EU_Inv => Rinv
   end.
 
-(** Return the ℝ function correspodning to a bainary operator *)
+(** Return the ℝ function corresponding to a binary operator *)
 
 Definition binary_fun (f : Expr_BinaryOp) : R->R->R :=
   match f with
@@ -75,7 +86,7 @@ Definition binary_fun (f : Expr_BinaryOp) : R->R->R :=
   | EB_Min => Rmin
   end.
 
-(** Return the ℚ function correspodning to an unary operator *)
+(** Return the ℚ function corresponding to an unary operator *)
 
 Definition unary_fun_q (f : Expr_UnaryOp) : Q->Q :=
   match f with
@@ -83,7 +94,7 @@ Definition unary_fun_q (f : Expr_UnaryOp) : Q->Q :=
   | EU_Inv => Qinv
   end.
 
-(** Return the ℚ function correspodning to a binary operator *)
+(** Return the ℚ function corresponding to a binary operator *)
 
 Definition binary_fun_q (f : Expr_BinaryOp) : Q->Q->Q :=
   match f with
@@ -95,7 +106,7 @@ Definition binary_fun_q (f : Expr_BinaryOp) : Q->Q->Q :=
   | EB_Min => Qminmax.Qmin
   end.
 
-(** Check if the argumet of an unary operator is valid (that is not inversion of 0) *)
+(** Check if the argument of an unary operator is valid (that is not inversion of 0) *)
 
 Definition unary_check_args (f : Expr_UnaryOp) (a : Q) : bool :=
   match f with
@@ -103,7 +114,7 @@ Definition unary_check_args (f : Expr_UnaryOp) (a : Q) : bool :=
   | _ => true
   end.
 
-(** Check if the argumets of a binary operator are valid (that is not division by 0) *)
+(** Check if the arguments of a binary operator are valid (that is not division by 0) *)
 
 Definition binary_check_args (f : Expr_BinaryOp) (a b : Q) : bool :=
   match f with
@@ -111,7 +122,7 @@ Definition binary_check_args (f : Expr_BinaryOp) (a b : Q) : bool :=
   | _ => true
   end.
 
-(** Interpret an AST, that is convert it back to a ℝ term - this function and the reficiation tactic must be inverse *)
+(** Interpret an AST, that is convert it back to a ℝ term - this function and the reification tactic must be inverse *)
 
 Fixpoint interpret (e : ExprReal) : R :=
   match e with
@@ -164,7 +175,7 @@ Fixpoint cleanup (e : ExprReal) : ExprReal :=
   | ER_Binary f a b => ER_Binary f (cleanup a) (cleanup b)
   end.
 
-(** ** Proofs that the simplifcation and cleanup functions are correct *)
+(** ** Proofs that the simplification and cleanup functions are correct *)
 
 (** *** ℚ ℝ arithmetic equivalence lemmas missing in the standard library *)
 
@@ -263,7 +274,7 @@ Proof.
   apply simplify_correct.
 Qed.
 
-(** ** Reification and tctic *)
+(** ** Reification and main tactic *)
 
 (** *** Debugging *)
 
