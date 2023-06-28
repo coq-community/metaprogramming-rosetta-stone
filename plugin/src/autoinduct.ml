@@ -82,9 +82,10 @@ let rec recursive_argument env f_body sigma =
 (*
  * Inner implementation of autoinduct tactic
  * The current version supports only nested applications, and doesn't support every kind of subterm yet
- * It also does not have any useful error message when it doesn't find the function; it just does idtac
+ * It's Part 1 out of 3, so requires explicit arguments
+ * It also does not have the most useful error messages
  * It also requires exact equality (rather than convertibility) for the function and all of its arguments
- * It also doesn't stop itself if the chosen argument is a constant, and doesn't backtrack
+ * It also may not stop itself if the chosen argument is not inductive (have not tested yet; it may, actually)
  *)
 let rec do_autoinduct env concl f f_args sigma =
   match kind sigma concl with
