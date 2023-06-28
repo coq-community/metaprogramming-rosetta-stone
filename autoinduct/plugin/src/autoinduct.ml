@@ -37,7 +37,7 @@ let push_local (n, t) env =
 (* --- Implementation --- *)
 
 (*
- * Get the recursive argument index and arity
+ * Get the recursive argument index
  *)
 let rec recursive_argument env f_body sigma =
   match kind sigma f_body with
