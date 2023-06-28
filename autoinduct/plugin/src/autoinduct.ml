@@ -13,9 +13,9 @@ let lookup_definition env def sigma =
      begin match constant_value_in env (c, EConstr.Unsafe.to_instance u) with
      | v -> EConstr.of_constr v
      | exception NotEvaluableConst _ ->
-         CErrors.user_err (Pp.str "The supplied term is not a transparent constant.")
+         CErrors.user_err (Pp.str "The supplied term is not a transparent constant")
      end
-  | _ -> CErrors.user_err (Pp.str "The supplied term is not a constant.")
+  | _ -> CErrors.user_err (Pp.str "The supplied term is not a constant")
 
 (* Equal but convert to constr (maybe this exists already in the Coq API) *)
 let eequal trm1 trm2 sigma =
