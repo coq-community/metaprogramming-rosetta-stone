@@ -56,7 +56,7 @@ let find_autoinduct env concl f sigma =
     else
       let (sigma, found) =
         match kind sigma concl with
-        | App (g, g_args) ->
+        | Constr.App (g, g_args) ->
           let sigma, f_eq = eequal f g sigma in
           if f_eq then
             let f_body = lookup_definition env f sigma in
@@ -66,24 +66,27 @@ let find_autoinduct env concl f sigma =
               sigma, arg :: found
             else
               sigma, found
-      in EConstr.fold_with_binders sigma (fun _ -> true) aux found under_binders concl
+          else
+            sigma, found
+        | _ ->
+           sigma, found
+      in EConstr.fold_with_binders sigma (fun _ -> true) aux under_binders (sigma, found) concl
   in aux false (sigma, []) concl
 
 (* TODO comment *)
 let one_autoinduct arg =
-  let dest_arg = Some true, Tactics.ElimOnConstr (fun _env sigma -> sigma, (arg, Tactypes.NoBindings)) in
+  let dest_arg = Some true, Tactics.ElimOnConstr (fun _ sigma -> sigma, (arg, Tactypes.NoBindings)) in
   Tactics.induction_destruct true false ([dest_arg, (None, None), None], None)
 
 (* TODO comment *)
-let do_autoinduct env concl f f_args sigma =
-  let sigma, induct_args = find_autoinduct env f f_args concl sigma in
-  if CList.is_empty induct_args
-  then Tacticals.tclFAIL Pp.(str "Could not find anything to induct over.")
+let do_autoinduct env concl f sigma =
+  let sigma, induct_args = find_autoinduct env concl f sigma in
+  if CList.is_empty induct_args then
+    Tacticals.tclFAIL (Pp.str "Could not find anything to induct over")
   else
-    tclBIND (Proofview.Unsafe.tclEVARS sigma) begin fun () ->
-      Tacticals.tclFIRST (List.map one_autoinduct induct_args)
-    end
-
+    tclBIND
+      (Proofview.Unsafe.tclEVARS sigma)
+      (fun () -> Tacticals.tclFIRST (List.map one_autoinduct (List.rev induct_args)))
 (*
  * Implementation of autoinduct tactic, top level
  *)
