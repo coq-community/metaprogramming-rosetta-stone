@@ -35,7 +35,7 @@ Qed.
 
 ## OCaml
 
-The code is in [this file](autoinduct/plugin/src/autoinduct.ml)
+The code is in [this file](plugin/src/autoinduct.ml)
 
 <details>
 
@@ -47,7 +47,7 @@ details specific to the OCaml code
 
 ## LTac1
 
-The code is in [this file](autoinduct/ltac/Ltac1.v)
+The code is in [this file](ltac/Ltac1.v)
 
 <details>
 
@@ -60,7 +60,7 @@ details specific to the Ltac1 code
 ## LTac2
 
 To compile the Ltac version, you will need [StructTact](https://github.com/uwplse/StructTact).
-The code is in [this file](autoinduct/ltac/Ltac2.v)
+The code is in [this file](ltac/Ltac2.v)
 
 <details>
 
@@ -74,7 +74,7 @@ details specific to the Ltac2 code
 ## Elpi
 
 The [autoinduct/elpi/](autoinduct/elpi/) directory contains the code of a typical elpi tactic, and the file
-[Tactic.v](autoinduct/elpi/theories/Tactic.v) the actual implementation of `autoinduct`.
+[Tactic.v](elpi/theories/Tactic.v) the actual implementation of `autoinduct`.
 
 <details>
 
@@ -86,7 +86,7 @@ details specific to the Elpi code
 
 ## MetaCoq
 
-The [code](autoinduct/metacoq/theories/Autoinduct.v)
+The [code](metacoq/theories/Autoinduct.v)
 
 <details>
 
