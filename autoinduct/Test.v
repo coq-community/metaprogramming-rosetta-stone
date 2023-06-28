@@ -1,5 +1,6 @@
-From elpi Require Import elpi.
 From Autoinduct Require Import Autoinduct.
+
+Set Default Proof Mode "Classic".
 
 Inductive nat : Set :=
   | O : nat

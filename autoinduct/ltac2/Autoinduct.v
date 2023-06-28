@@ -46,7 +46,7 @@ Ltac2 autoinduct0 f :=
   let arg := find_applied f in
   induction $arg.
 
-Ltac2 Notation "autoinduct" f(constr) := (autoinduct0 (Some f)).
+Ltac2 Notation "autoinduct" "on" f(constr) := (autoinduct0 (Some f)).
 
 Ltac2 Notation "autoinduct" := (autoinduct0 None).
 
@@ -54,7 +54,7 @@ Ltac2 Notation "autoinduct" := (autoinduct0 None).
 Goal forall n, n + 0 = n.
   intros.
   Succeed (autoinduct;simpl;ltac1:(congruence)).
-  autoinduct Nat.add;simpl;ltac1:(congruence).
+  autoinduct on Nat.add;simpl;ltac1:(congruence).
 Qed.
 
 Require Import List.
@@ -62,7 +62,7 @@ Require Import List.
 Goal forall l : list nat, l ++ nil = l.
 Proof.
   intros.
-  autoinduct app;simpl;ltac1:(congruence).
+  autoinduct on app;simpl;ltac1:(congruence).
 Qed.
 (* called from ltac1 *)
 
@@ -72,9 +72,13 @@ Ltac autoinduct :=
       Option.get (Ltac1.to_constr f)
     in
     autoinduct0 (Some f)).
+
+Tactic Notation "autoinduct" "on" constr(x) := autoinduct x.
+Tactic Notation "autoinduct" := ltac2:(autoinduct0 None).
+
 Set Default Proof Mode "Classic".
 
 Goal forall n, n + 0 = n.
   intros.
-  autoinduct Nat.add;simpl;congruence.
+  autoinduct on Nat.add;simpl;congruence.
 Qed.
