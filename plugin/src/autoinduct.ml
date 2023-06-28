@@ -52,8 +52,8 @@ let lookup_definition env def sigma =
      let cb = lookup_constant c env in
      (match Global.body_of_constant_body Library.indirect_accessor cb with
       | Some(e, _, _) -> EConstr.of_constr e
-      | None -> CErrors.user_err (Pp.str "The supplied term is not a function"))
-  | _ -> CErrors.user_err (Pp.str "The supplied term is not a function")
+      | None -> CErrors.user_err (Pp.str "The supplied term is not a constant"))
+  | _ -> CErrors.user_err (Pp.str "The supplied term is not a constant")
 
 (* Equal but convert to constr (maybe this exists already in the Coq API) *)
 let eequal trm1 trm2 sigma =
