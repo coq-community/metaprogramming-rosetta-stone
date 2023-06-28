@@ -44,7 +44,7 @@ let rec recursive_argument env f_body sigma =
 (*
  * Inner implementation of autoinduct tactic
  * The current version does not go under binders
- * It's Part 2 out of 3, so requires explicit arguments
+ * It's Part 2 out of 3, so requires the function explicitly, but no arguments
  * It also does not have the most useful error messages
  * It also requires exact equality (rather than convertibility) for the function and all of its arguments
  * It also may not stop itself if the chosen argument is not inductive (have not tested yet; it may, actually)
@@ -73,12 +73,17 @@ let find_autoinduct env concl f sigma =
       in EConstr.fold_with_binders sigma (fun _ -> true) aux under_binders (sigma, found) concl
   in aux false (sigma, []) concl
 
-(* TODO comment *)
-let one_autoinduct arg =
+(*
+ * Given the argument to induct over, invoke the induction tactic
+ *)
+let induct_on arg =
   let dest_arg = Some true, Tactics.ElimOnConstr (fun _ sigma -> sigma, (arg, Tactypes.NoBindings)) in
   Tactics.induction_destruct true false ([dest_arg, (None, None), None], None)
 
-(* TODO comment *)
+(*
+ * Find possible arguments to suggest inducting over
+ * Try just the first one (which is last in the list of arguments)
+ *)
 let do_autoinduct env concl f sigma =
   let sigma, induct_args = find_autoinduct env concl f sigma in
   if CList.is_empty induct_args then
@@ -86,7 +91,7 @@ let do_autoinduct env concl f sigma =
   else
     tclBIND
       (Proofview.Unsafe.tclEVARS sigma)
-      (fun () -> Tacticals.tclFIRST (List.map one_autoinduct (List.rev induct_args)))
+      (fun () -> Tacticals.tclFIRST (List.map induct_on (List.rev induct_args)))
 (*
  * Implementation of autoinduct tactic, top level
  *)
