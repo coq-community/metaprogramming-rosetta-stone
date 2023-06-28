@@ -34,35 +34,35 @@ Lemma add_left_O :
   forall (n : nat),
     add_left n O = n.
 Proof.
-  intros. autoinduct add_left n O; simpl; congruence.
+  intros. autoinduct add_left; simpl; congruence.
 Qed.
 
 Lemma add_right_O :
   forall (m : nat),
     add_right O m = m.
 Proof.
-  intros; autoinduct add_right O m; simpl; congruence.
+  intros; autoinduct add_right; simpl; congruence.
 Qed.
 
 Lemma add_left_S :
   forall (n m : nat),
     S (add_left n m) = add_left n (S m).
 Proof.
-  intros; autoinduct add_left n m; simpl; congruence.
+  intros; autoinduct add_left; simpl; congruence.
 Qed.
 
 Lemma add_right_S :
   forall (n m : nat),
     S (add_right n m) = add_right (S n) m.
 Proof.
-  intros; autoinduct add_right n m; simpl; congruence.
+  intros; autoinduct add_right; simpl; congruence.
 Qed.
 
 Lemma add_left_comm:
   forall (n m : nat),
     add_left n m = add_left m n.
 Proof.
-  intros; autoinduct add_left n m; simpl.
+  intros; autoinduct add_left; simpl.
   - symmetry. apply add_left_O.
   - rewrite IHn0. apply add_left_S.
 Qed.
@@ -71,7 +71,7 @@ Lemma add_right_comm:
   forall (n m : nat),
     add_right n m = add_right m n.
 Proof.
-  intros; autoinduct add_right n m; simpl.
+  intros; autoinduct add_right; simpl.
   - symmetry. apply add_right_O.
   - rewrite IHn0. apply add_right_S.
 Qed.

@@ -4,42 +4,13 @@ open Environ
 
 (* --- Useful higher-order functions, mostly from https://github.com/uwplse/coq-plugin-lib --- *)
 
-let bind f1 f2 = (fun sigma -> let sigma, a = f1 sigma in f2 a sigma) 
-let ret a = fun sigma -> sigma, a
-
-(* Stateful if/else *)
-let branch_state p f g a =
-  bind
-    (fun sigma_f ->
-      bind
-        (p a)
-        (fun b sigma_t -> ret b (if b then sigma_t else sigma_f))
-        sigma_f)
-    (fun b -> if b then f a else g a)
-
 (* Like List.fold_left, but threading state *)
 let fold_left_state f b l sigma =
   List.fold_left (fun (sigma, b) a -> f b a sigma) (sigma, b) l
 
-(* fold_left2 with state *)
-let fold_left2_state f c l1 l2 sigma =
-  List.fold_left2 (fun (sigma, c) a b -> f c a b sigma) (ret c sigma) l1 l2
-
 (* Like fold_left_state, but over arrays *)
 let fold_left_state_array f b args =
   fold_left_state f b (Array.to_list args)
-
-(* Like fold_left2_state, but over arrays *)
-let fold_left2_state_array f c args1 args2 sigma =
-  fold_left2_state f c (Array.to_list args1) (Array.to_list args2) sigma
-
-(* Stateful forall2 *)
-let forall2_state_array p args1 args2 =
-  fold_left2_state_array
-    (fun b a1 a2 -> branch_state (p a1) (fun _ -> ret b) (fun _ -> ret false) a2)
-    true
-    args1
-    args2
 
 (* --- Useful Coq utilities, mostly from https://github.com/uwplse/coq-plugin-lib --- *)
 
@@ -66,7 +37,7 @@ let push_local (n, t) env =
 (* --- Implementation --- *)
 
 (*
- * Get the recursive argument index
+ * Get the recursive argument index and arity
  *)
 let rec recursive_argument env f_body sigma =
   match kind sigma f_body with
@@ -87,29 +58,25 @@ let rec recursive_argument env f_body sigma =
  * It also requires exact equality (rather than convertibility) for the function and all of its arguments
  * It also may not stop itself if the chosen argument is not inductive (have not tested yet; it may, actually)
  *)
-let rec do_autoinduct env concl f f_args sigma =
+let rec do_autoinduct env concl f sigma =
   match kind sigma concl with
   | Constr.App (g, g_args) ->
      let sigma, f_eq = eequal f g sigma in
      if f_eq then
-       if Array.length f_args = Array.length g_args then
-         let sigma, args_eq = forall2_state_array eequal f_args g_args sigma in
-         if args_eq then 
-           let f_body = lookup_definition env f sigma in
-           let arg_no = recursive_argument env f_body sigma in
-           let arg = Array.get g_args arg_no in
-           let dest_arg = (Some true), Tactics.ElimOnConstr (fun env sigma -> sigma, (arg, Tactypes.NoBindings)) in
-           Tactics.induction_destruct true false ([(dest_arg, (None, None), None)], None)
-         else
-           Tacticals.tclFAIL (Pp.str "Wrong number of arguments")
+       let f_body = lookup_definition env f sigma in
+       let arg_no = recursive_argument env f_body sigma in
+       if arg_no < Array.length g_args then
+         let arg = Array.get g_args arg_no in
+         let dest_arg = (Some true), Tactics.ElimOnConstr (fun env sigma -> sigma, (arg, Tactypes.NoBindings)) in
+         Tactics.induction_destruct true false ([(dest_arg, (None, None), None)], None)
        else
-         Tacticals.tclFAIL (Pp.str "Could not find an occurrence of the supplied function")
+         Tacticals.tclFAIL (Pp.str "Wrong number of arguments")
      else
        let _, t =
          fold_left_state_array
            (fun t a sigma ->
-             sigma, Tacticals.tclOR t (do_autoinduct env a f f_args sigma))
-           (Tacticals.tclFAIL (Pp.str "No arguments were supplied"))
+             sigma, Tacticals.tclOR t (do_autoinduct env a f sigma))
+           (Tacticals.tclFAIL (Pp.str "Function is not applied to any arguments"))
            g_args
            sigma
        in t
@@ -119,11 +86,11 @@ let rec do_autoinduct env concl f f_args sigma =
 (*
  * Implementation of autoinduct tactic, top level
  *)
-let autoinduct f f_args =
+let autoinduct f =
   Goal.enter begin fun gl ->
     let env = Goal.env gl in
     let sigma = Goal.sigma gl in
     let concl = Goal.concl gl in
-    do_autoinduct env concl f f_args sigma 
+    do_autoinduct env concl f sigma 
   end
 
