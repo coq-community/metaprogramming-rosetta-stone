@@ -2,7 +2,7 @@ open Proofview
 open EConstr
 open Environ
 
-(* --- Useful higher-order functions --- *)
+(* --- Useful higher-order functions, mostly from https://github.com/uwplse/coq-plugin-lib --- *)
 
 let bind f1 f2 = (fun sigma -> let sigma, a = f1 sigma in f2 a sigma) 
 let ret a = fun sigma -> sigma, a
@@ -41,7 +41,7 @@ let forall2_state_array p args1 args2 =
     args1
     args2
 
-(* --- Useful Coq utilities --- *)
+(* --- Useful Coq utilities, mostly from https://github.com/uwplse/coq-plugin-lib --- *)
 
 (*
  * Look up a definition from an environment
@@ -55,7 +55,7 @@ let lookup_definition env def sigma =
       | None -> CErrors.user_err (Pp.str "The supplied term is not a function"))
   | _ -> CErrors.user_err (Pp.str "The supplied term is not a function")
 
-(* Equal but convert to constr (maybe this exists already in the Coq API *)
+(* Equal but convert to constr (maybe this exists already in the Coq API) *)
 let eequal trm1 trm2 sigma =
   sigma, Constr.equal (EConstr.to_constr sigma trm1) (EConstr.to_constr sigma trm2)
 
