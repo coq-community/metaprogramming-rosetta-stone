@@ -96,28 +96,24 @@ let rec do_autoinduct env concl f f_args sigma =
          if args_eq then 
            let f_body = lookup_definition env f sigma in
            let arg_no = recursive_argument env f_body sigma in
-           Feedback.msg_notice (Pp.int arg_no);
            let arg = Array.get g_args arg_no in
-           Feedback.msg_notice (Printer.pr_econstr_env env sigma arg);
            let dest_arg = (Some true), Tactics.ElimOnConstr (fun env sigma -> sigma, (arg, Tactypes.NoBindings)) in
-           Proofview.tclBIND
-             (Tactics.induction_destruct true false ([(dest_arg, (None, None), None)], None))
-             (fun _ -> Feedback.msg_notice (Pp.str "hi"); Tacticals.tclIDTAC)
+           Tactics.induction_destruct true false ([(dest_arg, (None, None), None)], None)
          else
-           Tacticals.tclIDTAC
+           Tacticals.tclFAIL (Pp.str "Wrong number of arguments")
        else
-         Tacticals.tclIDTAC
+         Tacticals.tclFAIL (Pp.str "Could not find an occurrence of the supplied function")
      else
        let _, t =
          fold_left_state_array
-           (fun _ a sigma ->
-             sigma, do_autoinduct env a f f_args sigma)
-           Tacticals.tclIDTAC
+           (fun t a sigma ->
+             sigma, Tacticals.tclOR t (do_autoinduct env a f f_args sigma))
+           (Tacticals.tclFAIL (Pp.str "No arguments were supplied"))
            g_args
            sigma
        in t
   | _ ->
-     Tacticals.tclIDTAC
+     Tacticals.tclFAIL (Pp.str "Could not find anything to induct over")
 
 (*
  * Implementation of autoinduct tactic, top level
@@ -127,6 +123,6 @@ let autoinduct f f_args =
     let env = Goal.env gl in
     let sigma = Goal.sigma gl in
     let concl = Goal.concl gl in
-    do_autoinduct env concl f f_args sigma
+    do_autoinduct env concl f f_args sigma 
   end
 
