@@ -18,6 +18,7 @@
 - Author(s):
   - Enzo Crance
   - Yannick Forster
+  - Gaëtan Gilbert
   - Talia Ringer
   - Michael Soegtrop
   - Enrico Tassi
