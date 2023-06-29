@@ -18,6 +18,22 @@ Fixpoint add_right (n m : nat) : nat :=
   | S p => S (add_right n p)
   end.
 
+Inductive list (T : Type) : Type :=
+  | nil : list T
+  | cons : T -> list T -> list T.
+
+Fixpoint map (A B : Type) (f : A -> B) (l : list A) : list B :=
+  match l with
+  | @nil _ => nil _
+  | @cons _ a t => @cons B (f a) (map A B f t)
+  end.
+
+Fixpoint app (A : Type) (l1 l2 : list A) : list A :=
+  match l1 with
+  | @nil _ => l2
+  | @cons _ a t1 => @cons _ a (@app A t1 l2) 
+  end.
+
 Module Step0.
 
 Lemma add_left_O : forall (n : nat), add_left n O = n.
@@ -72,6 +88,15 @@ Proof.
   all: simpl.
   - symmetry. apply add_right_O.
   - (rewrite IHm || rewrite IHn0). apply add_right_S.
+Qed.
+
+Lemma map_last_sym :
+  forall (A B : Type) (f : A -> B) (a : A) (l : list A),
+    @app _ (@map A B f l) (@cons _ (f a) (@nil _)) = map _ _ f (@app A l (@cons _ a (@nil _))).
+Proof.
+  intros.
+  autoinduct on (@map A B f l) || (idtac "step0 test7 fails"; induction l).
+  all: (simpl; congruence).
 Qed.
 
 End Step0.
@@ -132,6 +157,15 @@ Proof.
   - (rewrite IHm || rewrite IHn0). apply add_right_S.
 Qed.
 
+Lemma map_last_sym :
+  forall (A B : Type) (f : A -> B) (a : A) (l : list A),
+    @app _ (@map A B f l) (@cons _ (f a) (@nil _)) = @map _ _ f (@app A l (@cons _ a (@nil _))).
+Proof.
+  intros.
+  autoinduct on map || (idtac "step1 test7 fails"; induction l).
+  all: (simpl; congruence).
+Qed.
+
 End Step1.
 
 Module Step2.
@@ -190,5 +224,13 @@ Proof.
   - (rewrite IHm || rewrite IHn0). apply add_right_S.
 Qed.
 
+Lemma map_last_sym :
+  forall (A B : Type) (f : A -> B) (a : A) (l : list A),
+    @app _ (@map A B f l) (@cons _ (f a) (@nil _)) = @map _ _ f (@app A l (@cons _ a (@nil _))).
+Proof.
+  intros.
+  autoinduct || (idtac "step2 test7 fails"; induction l).
+  all: (simpl; congruence) || (idtac "step2 test7 autoinduct runs, but chooses argument that doesn't finish this proof"; admit).
+Admitted.
 
 End Step2.
