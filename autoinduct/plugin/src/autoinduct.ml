@@ -28,48 +28,74 @@ let push_local (n, t) env =
 (* --- Implementation --- *)
 
 (*
- * Get the recursive argument index
+ * Get the recursive argument index of the fixpoint defined by f
+ * Return None if f is not a fixpoint
  *)
-let rec recursive_argument env f_body sigma =
-  match kind sigma f_body with
-  | Constr.Fix ((rec_indexes, i), _) -> Array.get rec_indexes i
+let rec recursive_index env f sigma =
+  match kind sigma f with
+  | Constr.Fix ((rec_indexes, i), _) ->
+     Some (Array.get rec_indexes i)
   | Constr.Lambda (n, t, b) ->
      let env_b = push_local (n, t) env in
-     1 + (recursive_argument env_b b sigma)
+     Option.map (fun n -> 1 + n) (recursive_index env_b b sigma)
   | Constr.Const (c, u) ->
-     recursive_argument env (lookup_definition env f_body sigma) sigma
+     recursive_index env (lookup_definition env f sigma) sigma
   | _ ->
-     CErrors.user_err (Pp.str "The supplied function is not a fixpoint")
+     None
 
 (*
- * Inner implementation of autoinduct tactic
- * The current version does not go under binders
- * It's Part 2 out of 3, so requires the function explicitly, but no arguments
- * It also does not have the most useful error messages
- * It also requires exact equality (rather than convertibility) for the function and all of its arguments
- * It also may not stop itself if the chosen argument is not inductive (have not tested yet; it may, actually)
+ * Get the function to unfold and check if it is a fixpoint
+ * (This could be an Option.fold, but that would add OCaml version dependencies)
  *)
-let find_autoinduct env concl f sigma =
+let function_to_unfold f_opt g =
+  match f_opt with
+  | Some f -> f
+  | None -> g
+
+(*
+ * Get the recursive argument to supply to autoinduct
+ * Return None if not found
+ *)
+let recursive_argument env concl f_opt sigma =
+  match kind sigma concl with
+  | Constr.App (g, g_args) ->
+     let f = function_to_unfold f_opt g in
+     let sigma, f_eq = eequal f g sigma in
+     if f_eq then
+       let arg_opt =
+         Option.bind
+           (recursive_index env f sigma)
+           (fun arg_no ->
+             if arg_no < Array.length g_args then
+               Some (Array.get g_args arg_no)
+             else
+               None)
+       in sigma, arg_opt
+     else
+       sigma, None
+  | _ ->
+     sigma, None
+  
+(*
+ * Inner implementation of autoinduct tactic
+ * The current version:
+ * 1. does not go under binders,
+ * 2. supports both part 2 and part 3,
+ * 3. checks exact equality (rather than convertibility) for part 2,
+ * 4. does not have the best error handling yet.
+ *)
+let find_autoinduct env concl f_opt sigma : Evd.evar_map * (EConstr.t list) =
   let rec aux under_binders (sigma, found) concl =
     if under_binders then
       sigma, found
     else
-      let (sigma, found) =
-        match kind sigma concl with
-        | Constr.App (g, g_args) ->
-          let sigma, f_eq = eequal f g sigma in
-          if f_eq then
-            let f_body = lookup_definition env f sigma in
-            let arg_no = recursive_argument env f_body sigma in
-            if arg_no < Array.length g_args then
-              let arg = Array.get g_args arg_no in
-              sigma, arg :: found
-            else
-              sigma, found
-          else
-            sigma, found
-        | _ ->
-           sigma, found
+      let sigma, arg_opt = recursive_argument env concl f_opt sigma in
+      let found =
+        match arg_opt with
+        | Some arg ->
+           arg :: found
+        | None ->
+           found
       in EConstr.fold_with_binders sigma (fun _ -> true) aux under_binders (sigma, found) concl
   in aux false (sigma, []) concl
 
@@ -84,8 +110,8 @@ let induct_on arg =
  * Find possible arguments to suggest inducting over
  * Try just the first one (which is last in the list of arguments)
  *)
-let do_autoinduct env concl f sigma =
-  let sigma, induct_args = find_autoinduct env concl f sigma in
+let do_autoinduct env concl f_opt sigma =
+  let sigma, induct_args = find_autoinduct env concl f_opt sigma in
   if CList.is_empty induct_args then
     Tacticals.tclFAIL (Pp.str "Could not find anything to induct over")
   else
@@ -101,10 +127,6 @@ let autoinduct f_opt =
     let env = Goal.env gl in
     let sigma = Goal.sigma gl in
     let concl = Goal.concl gl in
-    match f_opt with
-    | Some f -> 
-       do_autoinduct env concl f sigma
-    | None ->
-       Tacticals.tclFAIL (Pp.str "This version is not yet implemeted")
+    do_autoinduct env concl f_opt sigma
   end
 

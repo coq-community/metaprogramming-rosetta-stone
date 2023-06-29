@@ -37,6 +37,13 @@ Proof.
   intros. autoinduct add_left; simpl; congruence.
 Qed.
 
+Lemma add_left_O' :
+  forall (n : nat),
+    add_left n O = n.
+Proof.
+  intros. autoinduct; simpl; congruence.
+Qed.
+
 Lemma add_right_O :
   forall (m : nat),
     add_right O m = m.
