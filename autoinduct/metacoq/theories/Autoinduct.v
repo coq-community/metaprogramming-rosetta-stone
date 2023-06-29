@@ -47,6 +47,70 @@ Tactic Notation "autoinduct" "on" constr(f) :=
              induction t).
 
 
+Unset Guard Checking.
+Section Autoinduct2.
+
+  Definition eq_const (c1 c2: term) : bool :=
+  match c1, c2 with
+  | tConst kn1 _, tConst kn2 _ => kn1 == kn2
+  | _, _ => false
+  end.
+
+  Fixpoint drop_quantification (t : term) : term :=
+    match t with
+    | tProd _ _ b => drop_quantification b
+    | _ => t
+    end.
+
+  (* Checks if the applied term of any tApp in args is f *)
+  Fixpoint find_cnst_in_args (f : term) (args : list term): term :=
+    match args with
+    | nil => tVar "error: passed term does not appear in the goal"
+    | cons a args => match a with
+                 | tApp hd a_args => if eq_const hd f
+                                    then a
+                                    else find_cnst_in_args f args
+                 | _ => find_cnst_in_args f args
+                 end
+    end.
+
+  (* From a list of terms returns all the tApp nodes, including the ones appearing as arguments *)
+  Fixpoint split_apps (ts : list term) : list term :=
+    match ts with
+    | nil => nil term
+    | (tApp hd args) :: ts' => (tApp hd args) :: (split_apps args) ++ (split_apps ts')
+    | _ :: ts' => split_apps ts'
+    end.
+
+  (* Finds if f appears applied in ctx *)
+  Definition find_app (ctx f: program) : term :=
+    let (_, f) := f in
+    let (Σ, t) := ctx in
+    let goal := drop_quantification t in
+    match goal with
+    | tApp hd args => if eq_const hd f
+                     then goal
+                     else find_cnst_in_args f (split_apps (map drop_quantification args))
+    | _ => tVar "error: the goal does not have an application"
+    end.
+
+End Autoinduct2.
+
+Tactic Notation "autoinduct2" "on" constr(f) :=
+  match goal with
+  | [ |- ?G ] => run_template_program (goal <- tmQuoteRec G;;
+                                     f' <- tmQuoteRec f ;;
+                                     app_f <- tmEval lazy (find_app goal f');;
+                                     let (Σ,_) := goal in
+                                     a <- tmEval lazy (autoinduct (Σ,app_f));;
+                                     tmUnquote a
+                 )
+                 (fun x =>
+                    let t := eval unfold my_projT2 in (my_projT2 x) in
+                      induction t
+                 )
+  end.
+
 Tactic Notation "autoinduct" := fail.
 
 Lemma test : forall n, n + 0 = n.
@@ -59,4 +123,16 @@ Qed.
 Lemma map_length : forall [A B : Type] (f : A -> B) (l : list A), #|map f l| = #|l|.
 Proof.
   intros. autoinduct on (map f l); simpl; auto.
+Qed.
+
+Lemma test2 : forall n, n + 0 = n.
+Proof.
+  intros.
+  autoinduct2 on plus.
+  all: cbn; congruence.
+Qed.
+
+Lemma map_length2 : forall [A B : Type] (f : A -> B) (l : list A), #|map f l| = #|l|.
+Proof.
+  intros. autoinduct2 on map; simpl; auto.
 Qed.
