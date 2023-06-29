@@ -48,9 +48,6 @@ Ltac2 find_applied f :=
 Ltac2 autoinduct0 f :=
   let arg :=
     match f with
-    | None =>
-        (* mode 3: find the first suitable function and argument in the goal *)
-        find_applied None
     | Some f =>
         match Constr.Unsafe.kind f with
         | Constr.Unsafe.App f args =>
@@ -60,6 +57,9 @@ Ltac2 autoinduct0 f :=
             (* mode 2: find f applied in the goal and induct on its argument *)
             find_applied (Some (f, struct_arg (eval red in $f)))
         end
+    | None =>
+        (* mode 3: find the first suitable function and argument in the goal *)
+        find_applied None
     end
   in
   induction $arg.
