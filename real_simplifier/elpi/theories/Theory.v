@@ -3,7 +3,7 @@ Require Import ZArith.
 Require Import QArith.
 Require Import Lra.
 Require Import Lia.
-    
+
 Inductive Expr_UnaryOp :=
   | EU_Opp
   | EU_Inv.
@@ -16,12 +16,23 @@ Inductive Expr_BinaryOp :=
   | EB_Max
   | EB_Min.
 
-Inductive ExprReal : Set :=
-  | ER_Q      : Q -> ExprReal
-  | ER_R      : R -> ExprReal
-  | ER_Z      : Z -> ExprReal
-  | ER_Unary  : Expr_UnaryOp -> ExprReal -> ExprReal
-  | ER_Binary : Expr_BinaryOp -> ExprReal -> ExprReal -> ExprReal.
+Inductive Expr_N : Set :=
+  | EN_lit : nat -> Expr_N
+  | EN_gen : nat -> Expr_N.
+
+Inductive Expr_R : Set :=
+  | ER_Q      : Q -> Expr_R
+  | ER_R      : R -> Expr_R
+  | ER_Z      : Z -> Expr_R
+  | ER_Unary  : Expr_UnaryOp -> Expr_R -> Expr_R
+  | ER_Binary : Expr_BinaryOp -> Expr_R -> Expr_R -> Expr_R
+  | ER_Pow    : Expr_R -> Expr_N -> Expr_R.
+
+Definition interpret_N (e : Expr_N) : nat :=
+  match e with
+  | EN_lit n => n
+  | EN_gen n => n
+  end.
     
 Definition unary_fun (f : Expr_UnaryOp) : R -> R :=
   match f with
@@ -67,16 +78,17 @@ Definition binary_check_args (f : Expr_BinaryOp) (a b : Q) : bool :=
   | _ => true
   end.
 
-Fixpoint interpret (e : ExprReal) : R :=
+Fixpoint interpret_R (e : Expr_R) : R :=
   match e with
   | ER_Q q => Q2R q
   | ER_R r => r
   | ER_Z z => IZR z
-  | ER_Unary f a => (unary_fun f) (interpret a)
-  | ER_Binary f a b => (binary_fun f) (interpret a) (interpret b)
+  | ER_Unary f a => (unary_fun f) (interpret_R a)
+  | ER_Binary f a b => (binary_fun f) (interpret_R a) (interpret_R b)
+  | ER_Pow a b => pow (interpret_R a) (interpret_N b)
   end.
 
-Fixpoint simplify (e : ExprReal) : ExprReal :=
+Fixpoint simplify (e : Expr_R) : Expr_R :=
   match e with
   | ER_Q q => ER_Q q
   | ER_R r => ER_R r
@@ -100,9 +112,15 @@ Fixpoint simplify (e : ExprReal) : ExprReal :=
       else ER_Binary f a' b'
     | _, _ => ER_Binary f a' b'
     end
+  | ER_Pow a b =>
+    let a' := simplify a in
+    match a', b with
+    | ER_Q aq, EN_lit bn => ER_Q (Qpower aq (Z.of_nat bn))
+    | _, _ => ER_Pow a' b
+    end
   end.
 
-Fixpoint cleanup (e : ExprReal) : ExprReal :=
+Fixpoint cleanup (e : Expr_R) : Expr_R :=
   match e with
   | ER_Q (z # 1) => ER_Z z
   | ER_Q (n # d) => ER_Binary EB_Div (ER_Z n) (ER_Z (Z.pos d))
@@ -110,6 +128,7 @@ Fixpoint cleanup (e : ExprReal) : ExprReal :=
   | ER_Z z => e
   | ER_Unary f a => ER_Unary f (cleanup a)
   | ER_Binary f a b => ER_Binary f (cleanup a) (cleanup b)
+  | ER_Pow a b => ER_Pow (cleanup a) b
   end.
 
 Lemma Q2R_max: forall x y : Q,
@@ -142,10 +161,43 @@ Proof.
     + apply Hle.
 Qed.
 
-Lemma cleanup_correct: forall (e : ExprReal),
-  interpret e = interpret (cleanup e).
+Lemma Qpower_nat_succ: forall (x : Q) (n : nat),
+  Qpower x (Z.of_nat (S n)) = x * Qpower x (Z.of_nat n).
 Proof.
-  intros e; induction e as [q|r|z|f a IHa|f a IHa b IHb].
+  intros x n.
+  induction n.
+  - cbn. unfold Qmult. cbn.
+    rewrite Z.mul_1_r, Pos.mul_1_r.
+    destruct x as [n d].
+    reflexivity.
+  - cbn.
+    unfold Qpower_positive.
+    rewrite pow_pos_succ.
+    + reflexivity.
+    + apply Eqsth.
+    + unfold Proper, respectful; intros; subst; reflexivity.
+    + intros a b c. unfold Qmult. destruct a, b, c. cbn.
+      rewrite Z.mul_assoc. 
+      rewrite Pos.mul_assoc.
+      reflexivity.
+Qed. 
+
+Lemma Q2R_pow: forall (x : Q) (n : nat),
+  (Q2R x ^ n)%R = Q2R (x ^ Z.of_nat n).
+Proof.
+  intros x n.
+  induction n.
+  - cbn. unfold Q2R. cbn. lra.
+  - rewrite Qpower_nat_succ. cbn.
+    rewrite Qreals.Q2R_mult.
+    rewrite IHn.
+    reflexivity.
+Qed.
+
+Lemma cleanup_correct: forall (e : Expr_R),
+  interpret_R e = interpret_R (cleanup e).
+Proof.
+  intros e; induction e as [q|r|z|f a IHa|f a IHa b IHb|a IHa b].
   - (* Q *) cbn.
     destruct q as [n d]; destruct d; try reflexivity.
     unfold Q2R; cbn; lra.
@@ -153,12 +205,13 @@ Proof.
   - (* Z *) reflexivity.
   - (* unary *) cbn; rewrite IHa; reflexivity.
   - (* binary *) cbn; rewrite IHa, IHb; reflexivity.
+  - (* pow *) cbn; rewrite IHa; reflexivity.
 Qed.
 
-Lemma simplify_correct: forall (e : ExprReal),
-  interpret e = interpret (simplify e).
+Lemma simplify_correct: forall (e : Expr_R),
+  interpret_R e = interpret_R (simplify e).
 Proof.
-  intros e; induction e as [q|r|z|f a IHa|f a IHa b IHb].
+  intros e; induction e as [q|r|z|f a IHa|f a IHa b IHb|a IHa b].
   - (* Q *) reflexivity.
   - (* R *) reflexivity.
   - (* Z *) cbn; unfold Q2R; cbn; lra.
@@ -174,8 +227,8 @@ Proof.
         unfold Qeq; cbn.
         lia.
   - (* binary *) cbn.
-    destruct (simplify a) as [qa| | | |]; rewrite IHa;
-    destruct (simplify b) as [qb| | | |]; rewrite IHb; try reflexivity.
+    destruct (simplify a) as [qa| | | | |]; rewrite IHa;
+    destruct (simplify b) as [qb| | | | |]; rewrite IHb; try reflexivity.
     cbn.
     destruct f; cbn.
     + rewrite Qreals.Q2R_plus; reflexivity.
@@ -189,10 +242,14 @@ Proof.
         lia.
     + rewrite Q2R_max; reflexivity.
     + rewrite Q2R_min; reflexivity.
+  - (* Pow *) cbn.
+    destruct (simplify a); rewrite IHa; try reflexivity.
+    destruct b; cbn; try reflexivity.
+    apply Q2R_pow.
 Qed.
 
-Lemma cleanup_simplify_correct: forall (e : ExprReal),
-  interpret e = interpret (cleanup (simplify e)).
+Lemma cleanup_simplify_correct: forall (e : Expr_R),
+  interpret_R e = interpret_R (cleanup (simplify e)).
 Proof.
   intros e.
   rewrite <- cleanup_correct.

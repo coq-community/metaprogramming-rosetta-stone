@@ -1,5 +1,4 @@
 pred reify i:term, o:term.
-
 reify ({{ IZR lp:Z }} as E) R :-
   if (zliteral Z) (R = {{ ER_Z lp:Z }}) (R = {{ ER_R lp:E }}).
 reify ({{ Q2R lp:Q }} as E) R :-
@@ -12,7 +11,21 @@ reify {{ (lp:A * lp:B)%R }} {{ ER_Binary EB_Mul lp:RA lp:RB }} :- reify A RA, re
 reify {{ (lp:A / lp:B)%R }} {{ ER_Binary EB_Div lp:RA lp:RB }} :- reify A RA, reify B RB.
 reify {{ Rmax lp:A lp:B }} {{ ER_Binary EB_Max lp:RA lp:RB }} :- reify A RA, reify B RB.
 reify {{ Rmin lp:A lp:B }} {{ ER_Binary EB_Min lp:RA lp:RB }} :- reify A RA, reify B RB.
+reify {{ (lp:A ^ lp:B)%R }} {{ ER_Pow lp:RA lp:RB }} :- reify A RA, reify-nat B RB.
 reify A {{ ER_R lp:A }}.
+
+pred reify-nat i:term, o:term.
+reify-nat ({{ Z.to_nat lp:Z }} as E) N :- 
+  if (zliteral Z) (N = {{ EN_lit lp:E }}) (N = {{ EN_gen lp:E }}).
+reify-nat E N :- 
+  if (computable-nat E) (N = {{ EN_lit lp:E }}) (N = {{ EN_gen lp:E }}).
+
+pred computable-nat i:term.
+computable-nat {{ (lp:A + lp:B)%nat }} :- computable-nat A, computable-nat B.
+computable-nat {{ (lp:A - lp:B)%nat }} :- computable-nat A, computable-nat B.
+computable-nat {{ (lp:A * lp:B)%nat }} :- computable-nat A, computable-nat B.
+computable-nat {{ S lp:A }} :- computable-nat A.
+computable-nat {{ O }}.
 
 pred zliteral i:term.
 zliteral {{ Z0 }}.
