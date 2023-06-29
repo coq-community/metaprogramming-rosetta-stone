@@ -35,7 +35,7 @@ Qed.
 
 ## OCaml
 
-The code is in [this file](plugin/src/autoinduct.ml)
+The code is in [this file](ocaml/src/autoinduct.ml)
 
 <details>
 
