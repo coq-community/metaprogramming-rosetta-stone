@@ -10,8 +10,17 @@ DECLARE PLUGIN "autoinduct-plugin.plugin"
 
 (*
  * This is where the autoinduct tactic is implemented.
+ *
+ * The OCaml version of this tactic is very flexible.
+ * You can supply the function and all arguments, just the function,
+ * or nothing at all. The less you supply, the more guessing the tactic
+ * has to do when it decides where to induct.
  *)
 TACTIC EXTEND autoinduct_tactic
-| [ "autoinduct" "on" constr(f) ] -> { autoinduct (Some f) }
-| [ "autoinduct" ] -> { autoinduct None }
+| [ "autoinduct" "on" "(" constr(f) constr_list(args) ")" ] ->
+  { autoinduct (Some f) (Some (Array.of_list args)) }
+| [ "autoinduct" "on" constr(f) ] ->
+  { autoinduct (Some f) None }
+| [ "autoinduct" ] ->
+  { autoinduct None None }
 END
