@@ -34,6 +34,8 @@ Fixpoint app (A : Type) (l1 l2 : list A) : list A :=
   | @cons _ a t1 => @cons _ a (@app A t1 l2) 
   end.
 
+Definition add_right_alias := add_right.
+
 Module Step0.
 
 Lemma add_left_O : forall (n : nat), add_left n O = n.
@@ -95,7 +97,14 @@ Lemma map_last_sym :
     @app _ (@map A B f l) (@cons _ (f a) (@nil _)) = map _ _ f (@app A l (@cons _ a (@nil _))).
 Proof.
   intros.
-  autoinduct on (@map A B f l) || (idtac "step0 test7 fails"; induction l).
+  autoinduct on (@map A B f l) || (idtac "step0 test7 fails (many arguments)"; induction l).
+  all: (simpl; congruence).
+Qed.
+
+Lemma add_right_alias_O : forall (m : nat), add_right_alias O m = m.
+Proof.
+  intros.
+  autoinduct on (add_right_alias O m) || (idtac "step0 test8 fails (aliased constant)"; induction m).
   all: (simpl; congruence).
 Qed.
 
@@ -162,7 +171,14 @@ Lemma map_last_sym :
     @app _ (@map A B f l) (@cons _ (f a) (@nil _)) = @map _ _ f (@app A l (@cons _ a (@nil _))).
 Proof.
   intros.
-  autoinduct on map || (idtac "step1 test7 fails"; induction l).
+  autoinduct on map || (idtac "step1 test7 fails (many arguments)"; induction l).
+  all: (simpl; congruence).
+Qed.
+
+Lemma add_right_alias_O : forall (m : nat), add_right_alias O m = m.
+Proof.
+  intros.
+  autoinduct on add_right_alias || (idtac "step1 test8 fails (aliased constant)"; induction m).
   all: (simpl; congruence).
 Qed.
 
@@ -229,8 +245,15 @@ Lemma map_last_sym :
     @app _ (@map A B f l) (@cons _ (f a) (@nil _)) = @map _ _ f (@app A l (@cons _ a (@nil _))).
 Proof.
   intros.
-  autoinduct || (idtac "step2 test7 fails"; induction l).
-  all: (simpl; congruence) || (idtac "step2 test7 autoinduct runs, but chooses argument that doesn't finish this proof"; admit).
+  autoinduct || (idtac "step2 test7 fails (many arguments)"; induction l).
+  all: (simpl; congruence) || (idtac "step2 test7 (many arguments) autoinduct runs, but chooses argument that doesn't finish this proof"; admit).
 Admitted.
+
+Lemma add_right_alias_O : forall (m : nat), add_right_alias O m = m.
+Proof.
+  intros.
+  autoinduct || (idtac "step2 test8 fails (aliased constant)"; induction m).
+  all: (simpl; congruence).
+Qed.
 
 End Step2.

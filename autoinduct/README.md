@@ -41,7 +41,11 @@ The code is in [this file](ocaml/src/autoinduct.ml)
 
 <summary>expand</summary>
 
-details specific to the OCaml code
+Details specific to the OCaml code.
+
+The current version:
+- does not go under binders, and
+- supports all of part 0, part 1, and part 2.
 
 </details>
 
@@ -56,13 +60,17 @@ Requires: [StructTact](https://github.com/uwplse/StructTact)
 
 <summary>expand</summary>
 
-Setails specific to the Ltac1 code.
+Details specific to the Ltac1 code.
+
+The current version supports only part 1, not parts 0 or part 2.
+This is mostly because of time limitations. 
 
 About extracting the recursive argument:
 - the match construct lets one access the recursive argument `n` of a fix
   as in `fix f _ _ {struct n} := _ end`, but does not support multiple arities.
   Hence one needs to provide multiple patterns, eg `fix f _ _ _ {struct n} := _ end`
   for ternary functions, and so on.
+- this requirement could be loosened for part 0, but not in any easily apparent way for parts 1 or 2.
 
 </details>
 
@@ -83,6 +91,10 @@ About extracting the recursive argument:
 - Ltac2 `eval red` produces non backtrackable errors when the argument
   cannot be reduced (eg opaque constant), so in mode 3 this can cause
   the tactic to fail incorrectly.
+  
+The current version:
+- does not go under binders, and
+- supports all of part 0, part 1, and part 2.
 
 </details>
 
