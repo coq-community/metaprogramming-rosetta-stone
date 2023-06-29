@@ -78,7 +78,9 @@ About extracting the recursive argument:
 - the code uses APIs in the `Unsafe` namespace to access the raw
   syntax of terms. This makes the code work for any arity.
 
-
+- Ltac2 `eval red` produces non backtrackable errors when the argument
+  cannot be reduced (eg opaque constant), so in mode 3 this can cause
+  the tactic to fail incorrectly.
 
 </details>
 
