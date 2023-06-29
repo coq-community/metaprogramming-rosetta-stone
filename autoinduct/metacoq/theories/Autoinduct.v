@@ -39,21 +39,24 @@ Definition autoinduct (p : program) : term :=
   | _ => tVar "passed term does not unfold to a fixpoint"
   end.
 
-Tactic Notation "autoinduct" constr(f) :=
+Tactic Notation "autoinduct" "on" constr(f) :=
   run_template_program (t <- tmQuoteRec f ;;
                         a <- tmEval lazy (autoinduct t) ;;
                         tmUnquote a)
     (fun x => let t := eval unfold my_projT2 in (my_projT2 x) in
              induction t).
 
+
+Tactic Notation "autoinduct" := fail.
+
 Lemma test : forall n, n + 0 = n.
 Proof.
   intros.
-  autoinduct (plus n 0).
+  autoinduct on (plus n 0).
   all: cbn; congruence.
 Qed.
 
 Lemma map_length : forall [A B : Type] (f : A -> B) (l : list A), #|map f l| = #|l|.
 Proof.
-  intros. autoinduct (map f l); simpl; auto.
+  intros. autoinduct on (map f l); simpl; auto.
 Qed.

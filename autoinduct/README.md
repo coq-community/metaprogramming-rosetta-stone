@@ -35,7 +35,7 @@ Qed.
 
 ## OCaml
 
-The code is in [this file](plugin/src/autoinduct.ml)
+The code is in [this file](ocaml/src/autoinduct.ml)
 
 <details>
 
@@ -73,7 +73,7 @@ details specific to the Ltac2 code
 
 ## Elpi
 
-The [autoinduct/elpi/](elpi/) directory contains the code of a typical elpi tactic, and the file
+The [autoinduct/elpi/](elpi/) directory contains the code of a typical elpi tactic and the file
 [Tactic.v](elpi/theories/Tactic.v) the actual implementation of `autoinduct`.
 
 <details>
