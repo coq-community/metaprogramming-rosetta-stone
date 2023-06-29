@@ -10,7 +10,7 @@ Section Test.
 Variable x : R.
 Open Scope R.
 
-Goal (x+(Rmax ((3*4+5-6)/7) (1/2)) = x + 11/7).
+Goal (x+(Rmax ((3*4+5^2-6)/7) (1/2)) = x + 31/7).
 Proof.
   real_simplify.
   reflexivity.
