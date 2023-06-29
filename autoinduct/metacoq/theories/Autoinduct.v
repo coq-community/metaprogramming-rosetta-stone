@@ -99,10 +99,13 @@ End Autoinduct2.
 Tactic Notation "autoinduct2" "on" constr(f) :=
   match goal with
   | [ |- ?G ] => run_template_program (goal <- tmQuoteRec G;;
-                                     f' <- tmQuoteRec f ;;
-                                     app_f <- tmEval lazy (find_app goal f');;
-                                     let (Σ,_) := goal in
-                                     a <- tmEval lazy (autoinduct (Σ,app_f));;
+                                     fp <- tmQuoteRec f;;
+                                     t <- match fp.2 with
+                                         | tApp _ _=> tmReturn fp (* f comes with args *)
+                                         | _ => app_f <- tmEval lazy (find_app goal fp);; (* f is just the name of the fixpoint *)
+                                               tmReturn (goal.1,app_f)
+                                         end;;
+                                     a <- tmEval lazy (autoinduct t);;
                                      tmUnquote a
                  )
                  (fun x =>
@@ -125,6 +128,7 @@ Proof.
   intros. autoinduct on (map f l); simpl; auto.
 Qed.
 
+(* works without the args *)
 Lemma test2 : forall n, n + 0 = n.
 Proof.
   intros.
@@ -132,7 +136,22 @@ Proof.
   all: cbn; congruence.
 Qed.
 
+(* still works with (plus n 0) *)
+Lemma test2_ : forall n, n + 0 = n.
+Proof.
+  intros.
+  autoinduct2 on (plus n 0).
+  all: cbn; congruence.
+Qed.
+
+(* works without the args *)
 Lemma map_length2 : forall [A B : Type] (f : A -> B) (l : list A), #|map f l| = #|l|.
 Proof.
   intros. autoinduct2 on map; simpl; auto.
+Qed.
+
+(* still works with (map f l) *)
+Lemma map_length2_ : forall [A B : Type] (f : A -> B) (l : list A), #|map f l| = #|l|.
+Proof.
+  intros. autoinduct2 on (map f l); simpl; auto.
 Qed.
