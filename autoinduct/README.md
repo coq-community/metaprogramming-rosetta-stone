@@ -47,8 +47,10 @@ details specific to the OCaml code
 
 ## LTac1
 
-To compile the Ltac version, you will need [StructTact](https://github.com/uwplse/StructTact).
 The code is in [this file](ltac/Ltac1.v)
+
+Requires: [StructTact](https://github.com/uwplse/StructTact)
+
 
 <details>
 
@@ -78,7 +80,9 @@ About extracting the recursive argument:
 - the code uses APIs in the `Unsafe` namespace to access the raw
   syntax of terms. This makes the code work for any arity.
 
-
+- Ltac2 `eval red` produces non backtrackable errors when the argument
+  cannot be reduced (eg opaque constant), so in mode 3 this can cause
+  the tactic to fail incorrectly.
 
 </details>
 
@@ -87,6 +91,8 @@ About extracting the recursive argument:
 
 The [autoinduct/elpi/](elpi/) directory contains the code of a typical elpi tactic and the file
 [Tactic.v](elpi/theories/Tactic.v) the actual implementation of `autoinduct`.
+
+Requires: `coq-elpi`
 
 <details>
 
@@ -106,6 +112,8 @@ About extracting the recursive argument:
 ## MetaCoq
 
 The [code](metacoq/theories/Autoinduct.v)
+
+Requires: `coq-metacoq-template`
 
 <details>
 
