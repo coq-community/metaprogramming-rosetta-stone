@@ -42,8 +42,17 @@ Ltac2 find_applied f :=
   end.
 
 Ltac2 autoinduct0 f :=
-  let f := Option.map (fun f => (f, struct_arg (eval red in $f))) f in
-  let arg := find_applied f in
+  let arg :=
+    match f with
+    | None => find_applied None
+    | Some f =>
+        match Constr.Unsafe.kind f with
+        | Constr.Unsafe.App f args =>
+            Array.get args (struct_arg (eval red in $f))
+        | _ => find_applied (Some (f, struct_arg (eval red in $f)))
+        end
+    end
+  in
   induction $arg.
 
 Ltac2 Notation "autoinduct" "on" f(constr) := (autoinduct0 (Some f)).
@@ -58,6 +67,12 @@ Goal forall n, n + 0 = n.
 Qed.
 
 Require Import List.
+
+Goal forall n, n + 0 = n.
+Proof.
+  intros.
+  autoinduct on (n + 0);simpl;ltac1:(congruence).
+Qed.
 
 Goal forall l : list nat, l ++ nil = l.
 Proof.
