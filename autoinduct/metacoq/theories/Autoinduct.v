@@ -1,6 +1,6 @@
 (* General imports to work with TemplateMonad *)
 From MetaCoq.Template Require Import All.
-From MetaCoq Require Import bytestring.
+From MetaCoq.Utils Require Import bytestring.
 Require Import List.
 Import MCMonadNotation ListNotations.
 Open Scope bs.
