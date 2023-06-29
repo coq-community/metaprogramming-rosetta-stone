@@ -96,11 +96,15 @@ let do_autoinduct env concl f sigma =
 (*
  * Implementation of autoinduct tactic, top level
  *)
-let autoinduct f =
+let autoinduct f_opt =
   Goal.enter begin fun gl ->
     let env = Goal.env gl in
     let sigma = Goal.sigma gl in
     let concl = Goal.concl gl in
-    do_autoinduct env concl f sigma 
+    match f_opt with
+    | Some f -> 
+       do_autoinduct env concl f sigma
+    | None ->
+       Tacticals.tclFAIL (Pp.str "This version is not yet implemeted")
   end
 

@@ -13,5 +13,7 @@ DECLARE PLUGIN "autoinduct-plugin.plugin"
  *)
 TACTIC EXTEND autoinduct_tactic
 | [ "autoinduct" constr(f) ] ->
-   { autoinduct f }
+   { autoinduct (Some f) }
+| [ "autoinduct" ] ->
+   { autoinduct None }
 END
