@@ -30,6 +30,10 @@ Ltac2 find_applied f :=
                 if Constr.equal f g then farg
                 else fail "applies a different function"
             | None =>
+                (* NB: if we encounter a Qed definition, eval red will
+                   fail without backtracking (API limitation of ltac2).
+                   We could work around this by doing the eval red
+                   through ltac1 which does backtrack. *)
                 if Constr.is_const g then struct_arg (eval red in $g)
                 else fail "not a constant"
             end
