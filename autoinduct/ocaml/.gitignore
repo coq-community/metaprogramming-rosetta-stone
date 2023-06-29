@@ -20,3 +20,4 @@ theories/*.vos
 theories/*.glob
 theories/*.vo
 Makefile.coq
+theories/LocalTests.v
