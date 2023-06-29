@@ -1,9 +1,8 @@
 -generate-meta-for-package autoinduct-plugin
--R theories Autoinduction
+-R theories Autoinduct
 -I src
 
-theories/Loader.v
-theories/Demo.v
+theories/Autoinduct.v
 
 src/autoinduct.ml
 src/autoinduct.mli

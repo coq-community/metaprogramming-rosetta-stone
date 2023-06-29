@@ -12,8 +12,6 @@ DECLARE PLUGIN "autoinduct-plugin.plugin"
  * This is where the autoinduct tactic is implemented.
  *)
 TACTIC EXTEND autoinduct_tactic
-| [ "autoinduct" constr(f) ] ->
-   { autoinduct (Some f) }
-| [ "autoinduct" ] ->
-   { autoinduct None }
+| [ "autoinduct" "on" constr(f) ] -> { autoinduct (Some f) }
+| [ "autoinduct" ] -> { autoinduct None }
 END
