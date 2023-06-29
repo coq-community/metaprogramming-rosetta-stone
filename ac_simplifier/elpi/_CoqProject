@@ -1,0 +1,5 @@
+-R theories AC
+
+theories/AC.v
+theories/Tactic.v
+theories/Tests.v

@@ -54,7 +54,13 @@ The code is in [this file](ltac/Ltac1.v)
 
 <summary>expand</summary>
 
-details specific to the Ltac1 code
+Setails specific to the Ltac1 code.
+
+About extracting the recursive argument:
+- the match construct lets one access the recursive argument `n` of a fix
+  as in `fix f _ _ {struct n} := _ end`, but does not support multiple arities.
+  Hence one needs to provide multiple patterns, eg `fix f _ _ _ {struct n} := _ end`
+  for ternary functions, and so on.
 
 </details>
 
@@ -66,7 +72,13 @@ The code is in [this file](ltac/Ltac2.v)
 
 <summary>expand</summary>
 
-details specific to the Ltac2 code
+Some details specific to the Ltac2 code.
+
+About extracting the recursive argument:
+- the code uses APIs in the `Unsafe` namespace to access the raw
+  syntax of terms. This makes the code work for any arity.
+
+
 
 </details>
 
@@ -80,7 +92,14 @@ The [autoinduct/elpi/](elpi/) directory contains the code of a typical elpi tact
 
 <summary>expand</summary>
 
-details specific to the Elpi code
+Some details specific to the Elpi code.
+
+About extracting the recursive argument:
+- whilst elpi supports Coq syntax within quotations,
+  `{{ fix f _ _ {struct N} := _ end }}` does not let one bind `N`, so the code
+  uses the raw term ast `fix _ _ N _` to extract the index of the recursive
+  argument
+- since we look at the term ast, the code works for any arity of `f`
 
 </details>
 
@@ -92,6 +111,6 @@ The [code](metacoq/theories/Autoinduct.v)
 
 <summary>expand</summary>
 
-details specific to the MetaCoq code
+Some details specific to the MetaCoq code.
 
 </details>

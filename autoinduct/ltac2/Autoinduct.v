@@ -30,6 +30,10 @@ Ltac2 find_applied f :=
                 if Constr.equal f g then farg
                 else fail "applies a different function"
             | None =>
+                (* NB: if we encounter a Qed definition, eval red will
+                   fail without backtracking (API limitation of ltac2).
+                   We could work around this by doing the eval red
+                   through ltac1 which does backtrack. *)
                 if Constr.is_const g then struct_arg (eval red in $g)
                 else fail "not a constant"
             end
@@ -42,8 +46,22 @@ Ltac2 find_applied f :=
   end.
 
 Ltac2 autoinduct0 f :=
-  let f := Option.map (fun f => (f, struct_arg (eval red in $f))) f in
-  let arg := find_applied f in
+  let arg :=
+    match f with
+    | Some f =>
+        match Constr.Unsafe.kind f with
+        | Constr.Unsafe.App f args =>
+            (* mode 1: induct on an argument from the given term *)
+            Array.get args (struct_arg (eval red in $f))
+        | _ =>
+            (* mode 2: find f applied in the goal and induct on its argument *)
+            find_applied (Some (f, struct_arg (eval red in $f)))
+        end
+    | None =>
+        (* mode 3: find the first suitable function and argument in the goal *)
+        find_applied None
+    end
+  in
   induction $arg.
 
 Ltac2 Notation "autoinduct" "on" f(constr) := (autoinduct0 (Some f)).
@@ -58,6 +76,12 @@ Goal forall n, n + 0 = n.
 Qed.
 
 Require Import List.
+
+Goal forall n, n + 0 = n.
+Proof.
+  intros.
+  autoinduct on (n + 0);simpl;ltac1:(congruence).
+Qed.
 
 Goal forall l : list nat, l ++ nil = l.
 Proof.
