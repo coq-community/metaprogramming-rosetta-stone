@@ -114,7 +114,53 @@ Tactic Notation "autoinduct2" "on" constr(f) :=
                  )
   end.
 
-Tactic Notation "autoinduct" := fail.
+Section Autoinduct3.
+
+  (* Looks in the goal applications of fixpoints *)
+  Definition find_fixpoints (ctx : program) : list term :=
+    let (Σ, t) := ctx in
+    let goal := drop_quantification t in
+    let fixpoint_candidates := match goal with
+                               | tApp hd args => (goal :: (split_apps (map drop_quantification args)))
+                               | _ => [tVar "error: the goal does not have an application"]
+                               end in
+
+    let fixpoints := filter
+                       (fun t=> match t with
+                             | tApp (tConst kn _) _ => (match lookup_constant Σ kn with
+                                                       | Some b => true
+                                                       | _ => false
+                                                       end)
+                             | _ => false end)
+                       fixpoint_candidates
+    in
+    fixpoints.
+
+
+End Autoinduct3.
+
+Tactic Notation "autoinduct" :=
+  match goal with
+  | [ |- ?G ] => run_template_program (goal <- tmQuoteRec G;;
+                                     fixes <- tmEval lazy (find_fixpoints goal);;
+                                     pfixes <- tmEval lazy (map (fun t=> (goal.1,t)) fixes);;
+                                     autoinducts <- tmEval lazy (map autoinduct pfixes);;
+                                     (* filtering candidates which are function calls *)
+                                     autoinducts <- tmEval lazy (filter (fun t=> match t with | tApp _ _ => false | _ => true end) autoinducts);;
+                                     (* todo filter errors in autoinducts *)
+                                     let appf := match head autoinducts with
+                                                 | None => tVar "error: no candidate fixpoints to make induction"
+                                                 | Some x => x
+                                                 end in
+                                     a <- tmEval lazy appf;;
+                                     tmUnquote a
+
+                 )
+                 (fun x =>
+                    let t := eval unfold my_projT2 in (my_projT2 x) in
+                      induction t
+                 )
+  end.
 
 Lemma test : forall n, n + 0 = n.
 Proof.
@@ -153,5 +199,18 @@ Qed.
 (* still works with (map f l) *)
 Lemma map_length2_ : forall [A B : Type] (f : A -> B) (l : list A), #|map f l| = #|l|.
 Proof.
-  intros. autoinduct2 on (map f l); simpl; auto.
+  intros. autoinduct2 on (map f l) ; simpl; auto.
 Qed.
+
+Lemma test3 : forall n, n + 0 = n.
+Proof.
+  intros.
+  autoinduct.
+  all: cbn; congruence.
+Qed.
+
+Lemma map_length3 : forall [A B : Type] (f : A -> B) (l : list A), #|map f l| = #|l|.
+Proof.
+  intros. autoinduct; simpl; auto.
+Qed.
+
