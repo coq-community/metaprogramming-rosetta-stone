@@ -5,21 +5,21 @@ Require Import Ltac2.Ltac2.
 Ltac2 fail s := Control.backtrack_tactic_failure s.
 
 (* If you don't want to use Unsafe.kind, but can only handle fixpoints with 2 arguments *)
-Ltac2 naive_struct_arg f :=
+Ltac2 naive_struct_arg (f : constr) : int :=
   lazy_match! f with
   (* `fix f n m {struct n} := bla` and `fix f n {struct n} := fun m => bla` are the same thing so this handles both arity 1 and arity 2 when the first argument is the structural argument *)
   | (fix f n {struct n} := _) => 0
   | (fix f n m {struct m} := _) => 1
   end.
 
-Ltac2 rec struct_arg f :=
+Ltac2 rec struct_arg (f : constr) : int :=
   match Constr.Unsafe.kind f with
   | Constr.Unsafe.Fix structs which _ _ => Array.get structs which
   | Constr.Unsafe.Lambda _ body => Int.add 1 (struct_arg body)
   | _ => fail "not a fixpoint"
   end.
 
-Ltac2 find_applied f :=
+Ltac2 find_applied (f : (constr * int) option) : constr :=
   match! goal with
   | [ |- context [ ?t ] ] =>
       match Constr.Unsafe.kind t with
@@ -45,7 +45,7 @@ Ltac2 find_applied f :=
       end
   end.
 
-Ltac2 autoinduct0 f :=
+Ltac2 autoinduct0 (f: constr option) : unit :=
   let arg :=
     match f with
     | Some f =>
