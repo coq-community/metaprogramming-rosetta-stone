@@ -1,1 +1,1 @@
-From Elpi.Autoinduct Require Export Tactic.
+From Autoinduct.Elpi Require Export Tactic.

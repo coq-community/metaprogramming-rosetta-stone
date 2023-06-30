@@ -6,11 +6,11 @@ build-elpi:
 
 build-ltac2:
 	# building ltac2 #####################
-	coqc -Q ltac2 Ltac2.Autoinduct ltac2/Autoinduct.v
+	coqc -Q ltac2 Autoinduct.Ltac2 ltac2/Autoinduct.v
 
 build-ltac1:
 	# building ltac1 #####################
-	coqc -Q ltac1 Ltac1.Autoinduct ltac1/Autoinduct.v
+	coqc -Q ltac1 Autoinduct.Ltac1 ltac1/Autoinduct.v
 
 build-ocaml:
 	# building ocaml #####################
@@ -46,23 +46,23 @@ test: test-elpi test-ltac2 test-ltac1 test-ocaml test-metacoq
 
 test-elpi:
 	# testing elpi #####################
-	coqc -Q elpi/theories Elpi.Autoinduct Test.v
+	-coqc -Q elpi/theories Autoinduct.Elpi Test.v
 
-test-ltac2:	
+test-ltac2:	build-ltac2
 	# testing ltac2 #####################
-	coqc -Q ltac2 Ltac2.Autoinduct Test.v
+	coqc -Q ltac2 Autoinduct.Ltac2 Test.v
 
-test-ltac1:
+test-ltac1: build-ltac1
 	# testing ltac1 #####################
-	coqc -Q ltac1 Ltac2.Autoinduct Test.v
+	coqc -Q ltac1 Autoinduct.Ltac1 Test.v
 
 test-ocaml:
 	# testing ocaml #####################
-	OCAMLPATH=$$OCAMLPATH:$$PWD/ocaml/ coqc -I ocaml/src -Q ocaml/theories OCaml.Autoinduct Test.v
+	OCAMLPATH=$$OCAMLPATH:$$PWD/ocaml/ coqc -I ocaml/src -Q ocaml/theories Autoinduct.OCaml Test.v
 
 test-metacoq:
 	# testing metacoq #####################
-	coqc -Q metacoq/theories MetaCoq.Autoinduct Test.v
+	coqc -Q metacoq/theories Autoinduct.MetaCoq Test.v
 
 clean:
 	make -C elpi clean

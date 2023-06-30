@@ -1,4 +1,4 @@
--R theories Elpi.Autoinduct
+-R theories Autoinduct.Elpi
 
 theories/Tactic.v
 theories/Autoinduct.v

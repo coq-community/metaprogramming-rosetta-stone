@@ -1,4 +1,4 @@
--R theories MetaCoq.Autoinduct
+-R theories Autoinduct.MetaCoq
 
 theories/Autoinduct_Template.v
 theories/Autoinduct.v

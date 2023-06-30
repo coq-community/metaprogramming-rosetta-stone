@@ -20,7 +20,16 @@ jobs:
         with:
           custom_image: ${{ matrix.image }}
           opam_file: ${{ matrix.opam_file }}
+          before_script: |
+            startGroup "fix permission issues"
+              sudo chown -R coq:coq .
+            endGroup
           before_install: |
             startGroup "Add coq-extra-dev repo"
               opam repo add coq-extra-dev https://coq.inria.fr/opam/extra-dev
             endGroup
+          after_script: |
+            startGroup "Run test"
+              make test
+            endGroup
+
