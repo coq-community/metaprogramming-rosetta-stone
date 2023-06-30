@@ -39,64 +39,57 @@ Definition autoinduct (p : program) : term :=
   | _ => tVar "passed term does not unfold to a fixpoint"
   end.
 
-Tactic Notation "autoinduct" "on" constr(f) :=
+(* Tactic for Step 1 *)
+Tactic Notation "autoinduct1" "on" constr(f) :=
   run_template_program (t <- tmQuoteRec f ;;
                         a <- tmEval lazy (autoinduct t) ;;
                         tmUnquote a)
     (fun x => let t := eval unfold my_projT2 in (my_projT2 x) in
              induction t).
 
+(** * Step 2 *)
 
-Unset Guard Checking.
-Section Autoinduct2.
-
-  Definition eq_const (c1 c2: term) : bool :=
+Definition eq_const (c1 c2: term) : bool :=
   match c1, c2 with
   | tConst kn1 _, tConst kn2 _ => kn1 == kn2
   | _, _ => false
   end.
 
-  Fixpoint drop_quantification (t : term) : term :=
-    match t with
-    | tProd _ _ b => drop_quantification b
-    | _ => t
-    end.
+(* Checks if the applied term of any tApp in args is f *)
+Fixpoint find_cnst_in_args (f : term) (args : list term): term :=
+  match args with
+  | nil => tVar "error: passed term does not appear in the goal"
+  | cons a args => match a with
+                  | tApp hd a_args => if eq_const hd f
+                                     then a
+                                     else find_cnst_in_args f args
+                  | _ => find_cnst_in_args f args
+                  end
+  end.
 
-  (* Checks if the applied term of any tApp in args is f *)
-  Fixpoint find_cnst_in_args (f : term) (args : list term): term :=
-    match args with
-    | nil => tVar "error: passed term does not appear in the goal"
-    | cons a args => match a with
-                 | tApp hd a_args => if eq_const hd f
-                                    then a
-                                    else find_cnst_in_args f args
-                 | _ => find_cnst_in_args f args
-                 end
-    end.
-
-  (* From a list of terms returns all the tApp nodes, including the ones appearing as arguments *)
+(* From a list of terms returns all the tApp nodes, including the ones appearing as arguments *)
+#[bypass_check(guard)]
   Fixpoint split_apps (ts : list term) : list term :=
-    match ts with
-    | nil => nil term
-    | (tApp hd args) :: ts' => (tApp hd args) :: (split_apps args) ++ (split_apps ts')
-    | _ :: ts' => split_apps ts'
-    end.
+  match ts with
+  | nil => nil term
+  | (tApp hd args) :: ts' => (tApp hd args) :: (split_apps args) ++ (split_apps ts')
+  | _ :: ts' => split_apps ts'
+  end.
 
-  (* Finds if f appears applied in ctx *)
-  Definition find_app (ctx f: program) : term :=
-    let (_, f) := f in
-    let (Σ, t) := ctx in
-    let goal := drop_quantification t in
-    match goal with
-    | tApp hd args => if eq_const hd f
-                     then goal
-                     else find_cnst_in_args f (split_apps (map drop_quantification args))
-    | _ => tVar "error: the goal does not have an application"
-    end.
+(* Finds if f appears applied in ctx *)
+Definition find_app (ctx f: program) : term :=
+  let (_, f) := f in
+  let (Σ, t) := ctx in
+  let (_, goal) := decompose_prod_assum [] t in
+  match goal with
+  | tApp hd args => if eq_const hd f
+                   then goal
+                   else find_cnst_in_args f (split_apps (map (fun t => snd (decompose_prod_assum [] t)) args))
+  | _ => tVar "error: the goal does not have an application"
+  end.
 
-End Autoinduct2.
-
-Tactic Notation "autoinduct2" "on" constr(f) :=
+(* Tactic for Step 2 *)
+Tactic Notation "autoinduct" "on" constr(f) :=
   match goal with
   | [ |- ?G ] => run_template_program (goal <- tmQuoteRec G;;
                                      fp <- tmQuoteRec f;;
@@ -114,31 +107,29 @@ Tactic Notation "autoinduct2" "on" constr(f) :=
                  )
   end.
 
-Section Autoinduct3.
+(** * Step 3 *)
 
-  (* Looks in the goal applications of fixpoints *)
-  Definition find_fixpoints (ctx : program) : list term :=
-    let (Σ, t) := ctx in
-    let goal := drop_quantification t in
-    let fixpoint_candidates := match goal with
-                               | tApp hd args => (goal :: (split_apps (map drop_quantification args)))
-                               | _ => [tVar "error: the goal does not have an application"]
-                               end in
+(* Looks in the goal applications of fixpoints *)
+Definition find_fixpoints (ctx : program) : list term :=
+  let (Σ, t) := ctx in
+  let goal := drop_quantification t in
+  let fixpoint_candidates := match goal with
+                             | tApp hd args => (goal :: (split_apps (map drop_quantification args)))
+                             | _ => [tVar "error: the goal does not have an application"]
+                             end in
 
-    let fixpoints := filter
-                       (fun t=> match t with
-                             | tApp (tConst kn _) _ => (match lookup_constant Σ kn with
-                                                       | Some b => true
-                                                       | _ => false
-                                                       end)
-                             | _ => false end)
-                       fixpoint_candidates
-    in
-    fixpoints.
+  let fixpoints := filter
+                     (fun t=> match t with
+                           | tApp (tConst kn _) _ => (match lookup_constant Σ kn with
+                                                     | Some b => true
+                                                     | _ => false
+                                                     end)
+                           | _ => false end)
+                     fixpoint_candidates
+  in
+  fixpoints.
 
-
-End Autoinduct3.
-
+(* Step 3 *)
 Tactic Notation "autoinduct" :=
   match goal with
   | [ |- ?G ] => run_template_program (goal <- tmQuoteRec G;;
@@ -178,7 +169,7 @@ Qed.
 Lemma test2 : forall n, n + 0 = n.
 Proof.
   intros.
-  autoinduct2 on plus.
+  autoinduct on plus.
   all: cbn; congruence.
 Qed.
 
@@ -186,20 +177,20 @@ Qed.
 Lemma test2_ : forall n, n + 0 = n.
 Proof.
   intros.
-  autoinduct2 on (plus n 0).
+  autoinduct on (plus n 0).
   all: cbn; congruence.
 Qed.
 
 (* works without the args *)
 Lemma map_length2 : forall [A B : Type] (f : A -> B) (l : list A), #|map f l| = #|l|.
 Proof.
-  intros. autoinduct2 on map; simpl; auto.
+  intros. autoinduct on map; simpl; auto.
 Qed.
 
 (* still works with (map f l) *)
 Lemma map_length2_ : forall [A B : Type] (f : A -> B) (l : list A), #|map f l| = #|l|.
 Proof.
-  intros. autoinduct2 on (map f l) ; simpl; auto.
+  intros. autoinduct on (map f l) ; simpl; auto.
 Qed.
 
 Lemma test3 : forall n, n + 0 = n.
@@ -213,4 +204,3 @@ Lemma map_length3 : forall [A B : Type] (f : A -> B) (l : list A), #|map f l| = 
 Proof.
   intros. autoinduct; simpl; auto.
 Qed.
-

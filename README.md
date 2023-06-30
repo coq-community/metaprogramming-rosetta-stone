@@ -17,11 +17,13 @@
 
 - Author(s):
   - Enzo Crance
+  - Davide Fissore
   - Yannick Forster
   - Gaëtan Gilbert
   - Talia Ringer
   - Michael Soegtrop
   - Enrico Tassi
+  - Tomas Vallejos
 - Coq-community maintainer(s):
   - Yannick Forster ([**@yforster**](https://github.com/yforster))
 - License: [MIT License](LICENSE)
