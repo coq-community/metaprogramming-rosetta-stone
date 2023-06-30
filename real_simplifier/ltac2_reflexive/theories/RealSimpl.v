@@ -6,27 +6,27 @@
     - it does not change the term structure except for computation (which can be an advantage or disadvantage)
 
     A few notes:
-    - this is a reflexive tactic, which means the relevant context (a ℝ term) is converted to a gallina data structure and the
-      majority of the work (the simplification and computation) is done by gallina functions
-    - the advantage of reflexive tactics is that one can prove upfront that the transformations done by gallina functions are correct
+    - this is a reflective tactic, which means the relevant context (a [ℝ] term) is converted to a Gallina data structure and the
+      majority of the work (the simplification and computation) is done by Gallina functions
+    - the advantage of reflective tactics is that one can prove upfront that the transformations done by gallina functions are correct
     - in this case this means the equality of the original and simplified term is proven by application of a generic lemma
     - this is much faster than constructing and type checking equality lemmas for individual cases
-    - reflexive tactics typically have these components:
+    - reflective tactics typically have these components:
       - a reification tactic which converts the relevant context to an AST in gallina
-      - an interpretation tactic which converts the AST back to the original term (the inverse of reification)
+      - an interpretation/denotation function which converts the AST back to the original term (the inverse of reification, often called "reflection")
       - some processing function on the AST (written in gallina)
-      - a proof that the processing function has certain properties (in this case preserves equality in ℝ of the interpretation of the AST)
-      - a wrapper tactic, which does the reification, posts the above proof, computes in the type of the proof and applies this in some form
-    - this specific instance of a reflexive tactic takes a short cut:
+      - a proof that the processing function has certain properties (in this case preserves equality in [ℝ] of the interpretation of the AST)
+      - a wrapper tactic, which does the reification, poses the above proof, computes in the type of the proof and applies this in some form
+    - this specific instance of a reflective tactic takes a short cut:
       - terms which are not "understood" by the tactic, say variables or unknown functions are copied literally
       - not converting the handled terms fully to an AST type and relying on computation with explicit delta lists is "quick and dirty" but quite effective
       - the correctness proofs tend to be substantially more complicated if some form of context management is required
-      - the down side of this method is that if the user supplied term or context does contain symbols of the domain the tactic computes in (ℚ, ℤ, pos in this case)
+      - the down side of this method is that if the user supplied term or context does contain symbols of the domain the tactic computes in ([ℚ], [ℤ], [pos] in this case)
         the terms can blow up
-      - to avoid this one option is to copy the Q, Z and Pos functions used and use these copies (assuming that these copies do not occur in the user supplied term)
+      - to avoid this one option is to copy the [Q], [Z] and [Pos] functions used and use these copies (assuming that these copies do not occur in the user supplied term)
     
     Caveats:
-    - this tactic does ℚ, ℤ and Pos computation on parts of the supplied term
+    - this tactic does [ℚ], [ℤ] and [Pos] computation on parts of the supplied term
     - if the term includes computations with variables in these domains, the term might explode
 *)
 
