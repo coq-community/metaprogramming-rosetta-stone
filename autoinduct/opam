@@ -1,0 +1,29 @@
+opam-version: "2.0"
+version: "dev"
+maintainer: "yannick.forster@inria.fr"
+homepage: "https://github.com/coq-community/metaprogramming-rosetta-stone"
+dev-repo: "git+https://github.com/coq-community/metaprogramming-rosetta-stone"
+bug-reports: "https://github.com/uds-psl/coq-library-undecidability/issues"
+authors: ["Enzo Crance"
+          "Davide Fissore"
+          "Yannick Forster"
+          "Gaëtan Gilbert"
+          "Talia Ringer"
+          "Michael Soegtrop"
+          "Enrico Tassi"
+          "Tomas Vallejos"]
+
+license: "MIT"
+build: [
+  [make "-j%{jobs}%"]
+]
+install: [
+  [make "install"]
+]
+depends: [
+  "coq" {>= "8.16"}
+  "ocaml"
+  "coq-metacoq-template"
+  "coq-elpi"
+  "coq-struct-tact"
+]

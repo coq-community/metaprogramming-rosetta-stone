@@ -1,0 +1,26 @@
+name: Test compilation of Autoinduct plugin
+
+on: [push, pull_request]
+
+jobs:
+  build-matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        opam_file:
+          - 'autoinduct/opam'
+        image:
+          - 'coqorg/coq:8.17'
+      fail-fast: false  # don't stop jobs if one fails
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - uses: coq-community/docker-coq-action@v1
+        with:
+          custom_image: ${{ matrix.image }}
+          opam_file: ${{ matrix.opam_file }}
+          before_install: |
+            startGroup "Add coq-extra-dev repo"
+              opam repo add coq-extra-dev https://coq.inria.fr/opam/extra-dev
+            endGroup

@@ -1,5 +1,5 @@
 -generate-meta-for-package autoinduct-plugin
--R theories Autoinduct
+-R theories OCaml.Autoinduct
 -I src
 
 theories/Autoinduct.v
