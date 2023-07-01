@@ -1,6 +1,7 @@
 open Proofview
 open EConstr
 open Environ
+open Evd
 
 (* --- Useful utilities, adapted from coq-plugin-lib --- *)
 
@@ -8,13 +9,13 @@ open Environ
  * Return a1 if a1_opt is Some a1; otherwise return a2.
  * This could be an Option.fold, but that would add OCaml version dependencies.
  *)
-let get_with_default a1_opt a2 =
+let get_with_default (a1_opt : 'a option) (a2 : 'a) : 'a =
   match a1_opt with
   | Some a1 -> a1
   | None -> a2
 
 (* Look up a definition from an environment *)
-let lookup_definition env def sigma =
+let lookup_definition (env : Environ.env) (def : constr) (sigma : evar_map) : constr =
   match kind sigma def with
   | Constr.Const (c, u) ->
      begin match constant_value_in env (c, EConstr.Unsafe.to_instance u) with
@@ -25,11 +26,11 @@ let lookup_definition env def sigma =
   | _ -> CErrors.user_err (Pp.str "The supplied term is not a constant")
 
 (* Equal, but with evar_map tracking for defense against later changes *)
-let eequal trm1 trm2 sigma : Evd.evar_map * bool =
+let eequal (trm1 : constr) (trm2 : constr) (sigma : evar_map) : evar_map * bool =
   sigma, EConstr.eq_constr sigma trm1 trm2
 
-(* Equality between all elements of two lists *)
-let all_eequal trms1 trms2 sigma : Evd.evar_map * bool =
+(* Pairwise equality between all elements of two arrays *)
+let all_eequal (trms1 : constr array) (trms2 : constr array) (sigma : evar_map) : evar_map * bool =
   if Array.length trms1 = Array.length trms2 then
     List.fold_left2
       (fun (sigma, b) trm1 trm2 ->
@@ -42,7 +43,7 @@ let all_eequal trms1 trms2 sigma : Evd.evar_map * bool =
     sigma, false
 
 (* Push a local binding to an environment *)
-let push_local (n, t) env =
+let push_local ((n, t) : Names.Name.t Context.binder_annot * constr) (env : Environ.env) : Environ.env =
   EConstr.push_rel Context.Rel.Declaration.(LocalAssum (n, t)) env
 
 (* --- Implementation --- *)
@@ -51,7 +52,7 @@ let push_local (n, t) env =
  * Get the recursive argument index of the fixpoint defined by f.
  * Return None if f is not a fixpoint.
  *)
-let rec recursive_index env f sigma =
+let rec recursive_index (env : Environ.env) (f : constr) (sigma : evar_map) : int option =
   match kind sigma f with
   | Constr.Fix ((rec_indexes, i), _) ->
      (* get the recursive argument *)
@@ -71,7 +72,7 @@ let rec recursive_index env f sigma =
  * Get a recursive argument to the appropriate fixpoint to supply to autoinduct.
  * Return None if not found.
  *)
-let recursive_argument env concl f_opt args_opt sigma =
+let recursive_argument (env : Environ.env) (concl : constr) (f_opt : constr option) (args_opt : constr array option) (sigma : evar_map) : evar_map * constr option =
   match kind sigma concl with
   | Constr.App (g, g_args) ->
      let f = get_with_default f_opt g in
@@ -117,8 +118,8 @@ let recursive_argument env concl f_opt args_opt sigma =
  * fold_with_binders, but notably we will need to shift the found arguments
  * since everything here is de Bruijn indexed.
  *)
-let find_autoinduct env concl f_opt args_opt sigma =
-  let rec aux bound (sigma, found) concl =
+let find_autoinduct (env : Environ.env) (concl : constr) (f_opt : constr option) (args_opt : constr array option) (sigma : evar_map) : evar_map * constr list =
+  let rec aux (bound : bool) ((sigma, found) : evar_map * constr list) (concl : constr) : evar_map * constr list =
     if bound then
       (* do not handle binders yet *)
       sigma, found
@@ -137,7 +138,7 @@ let find_autoinduct env concl f_opt args_opt sigma =
 (*
  * Given the argument to induct over, invoke the induction tactic.
  *)
-let induct_on arg =
+let induct_on (arg : constr) : unit Proofview.tactic =
   let dest_arg = Some true, Tactics.ElimOnConstr (fun _ sigma -> sigma, (arg, Tactypes.NoBindings)) in
   Tactics.induction_destruct true false ([dest_arg, (None, None), None], None)
 
@@ -146,7 +147,7 @@ let induct_on arg =
  * Try just the first suggested one (which is last in the list of arguments).
  * If there are not any good candidates, fail with an error message.
  *)
-let do_autoinduct env concl f_opt args_opt sigma =
+let do_autoinduct (env : Environ.env) (concl : constr) (f_opt : constr option) (args_opt : constr array option) (sigma : evar_map) : unit tactic =
   let sigma, induct_args = find_autoinduct env concl f_opt args_opt sigma in
   if CList.is_empty induct_args then
     Tacticals.tclFAIL (Pp.str "Could not find anything to induct over")
@@ -160,7 +161,7 @@ let do_autoinduct env concl f_opt args_opt sigma =
  * This enters the tactic monad, gets the environment and state, and calls
  * the core autoinduct logic, which returns the appropriate tactic.
  *)
-let autoinduct f_opt args_opt =
+let autoinduct (f_opt : constr option) (args_opt : constr array option) : unit tactic =
   Goal.enter begin fun gl ->
     let env = Goal.env gl in
     let sigma = Goal.sigma gl in
