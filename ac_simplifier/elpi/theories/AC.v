@@ -1,22 +1,10 @@
 From Coq Require Import ZArith.
 
-Fixpoint nth {T : Type} (x0 : T) (s : list T) (n : nat) {struct n} : T :=
-  match s, n with
-  | cons x s', S n' => nth x0 s' n'
-  | cons x _, 0 => x
-  | _, _ => x0
-  end.
-
-Fixpoint ncons {T : Type} (n : nat) (x : T) (s : list T) : list T  :=
+(* ncons n x s = x :: ... :: x :: s where x is repeated for n times *)
+Fixpoint ncons {T : Type} (n : nat) (x : T) (s : list T) : list T :=
   match n with
   | S n' => cons x (ncons n' x s)
   | 0 => s
-  end.
-
-Fixpoint all {T : Type} (p : T -> bool) (xs : list T) : bool :=
-  match xs with
-  | cons x xs' => p x && all p xs'
-  | _ => true
   end.
 
 (* reified additive group expressions *)
@@ -43,16 +31,20 @@ Fixpoint ZMnorm (e : AGExpr) : list Z :=
 
 Section AGeval.
 
+(* We assume the carrier type and the additive group operators on it as       *)
+(* section variables.                                                         *)
 Context {G : Type} (zeroG : G) (oppG : G -> G) (addG : G -> G -> G).
 
+(* the interpretation function for AGExpr *)
 Fixpoint AGeval (vm : list G) (e : AGExpr) : G :=
   match e with
-  | AGX j => nth zeroG vm j
+  | AGX j => List.nth j vm zeroG
   | AGO => zeroG
   | AGOpp e1 => oppG (AGeval vm e1)
   | AGAdd e1 e2 => addG (AGeval vm e1) (AGeval vm e2)
   end.
 
+(* multiplication of a group element by a binary integer *)
 Definition mulGz (x : G) (n : Z) : G :=
   match n with
   | Z0 => zeroG
@@ -60,17 +52,32 @@ Definition mulGz (x : G) (n : Z) : G :=
   | Zneg p => oppG (Pos.iter (fun y => addG y x) zeroG p)
   end.
 
+(* the interpretation function for formal sums *)
 Fixpoint ZMsubst (vm : list G) (e : list Z) {struct e} : G :=
   match e, vm with
   | cons n e', cons x vm' => addG (mulGz x n) (ZMsubst vm' e')
   | _, _ => zeroG
   end.
 
+(* an auxiliary function for the Z-module simplifier *)
+Fixpoint ZMsimpl_aux (vm : list G) (e : list Z) {struct e} : list G * list G :=
+  match e, vm with
+  | cons Z0 e', cons _ vm' => ZMsimpl_aux vm' e'
+  | cons (Z.pos p) e', cons x vm' =>
+    let '(e1, e2) := ZMsimpl_aux vm' e' in (Pos.iter (cons x) e1 p, e2)
+  | cons (Z.neg p) e', cons x vm' =>
+    let '(e1, e2) := ZMsimpl_aux vm' e' in (e1, Pos.iter (cons x) e2 p)
+  | _, _ => (nil, nil)
+  end.
+
+(* We assume the commutative group axioms on G and its operators as section   *)
+(* variables.                                                                 *)
 Context (addA : forall x y z : G, addG x (addG y z) = addG (addG x y) z).
 Context (addC : forall x y : G, addG x y = addG y x).
 Context (add0x : forall x : G, addG zeroG x = x).
 Context (addNx : forall x : G, addG (oppG x) x = zeroG).
 
+(* some facts about the commutative group structure *)
 Let addx0 x : addG x zeroG = x.
 Proof. now rewrite addC, add0x. Qed.
 
@@ -136,6 +143,7 @@ destruct n as [|n|n], m as [|m|m]; rewrite ?add0x, ?addx0; trivial.
   now rewrite <- Hpos, oppD.
 Qed.
 
+(* the correctness lemma for normalization *)
 Lemma ZM_norm_subst (vm : list G) (e : AGExpr) :
   ZMsubst vm (ZMnorm e) = AGeval vm e.
 Proof.
@@ -155,27 +163,89 @@ induction e as [j| |e IHe|e1 IHe1 e2 IHe2]; simpl; trivial.
   now rewrite addACA, <-IHxs, mulzDl.
 Qed.
 
+(* the reflection lemma for proving valid commutative group equations *)
 Lemma ZM_correct (vm : list G) (e1 e2 : AGExpr) :
   let isZero (n : Z) := match n with Z0 => true | _ => false end in
-  all isZero (ZMnorm (AGAdd e1 (AGOpp e2))) = true ->
+  List.forallb isZero (ZMnorm (AGAdd e1 (AGOpp e2))) = true ->
   AGeval vm e1 = AGeval vm e2.
 Proof.
 set (e := AGAdd e1 (AGOpp e2)); intros isZero Hzeros.
 rewrite <- (addx0 (AGeval vm e1)), <- (add0x (AGeval vm e2)).
 rewrite <- (addNx (AGeval vm e2)), addA at 1; f_equal.
 change (addG (AGeval vm e1) (oppG (AGeval vm e2))) with (AGeval vm e).
-rewrite <- !ZM_norm_subst; revert vm Hzeros.
+rewrite <- ZM_norm_subst; revert vm Hzeros.
 induction (ZMnorm e) as [|x xs IHxs]; destruct vm as [|v vm]; simpl; trivial.
 now destruct x; try discriminate; rewrite add0x; apply IHxs.
 Qed.
 
+(* the reflection lemma for simplifying commutative group equations *)
+Lemma ZMsimpl_correct (vm : list G) (e1 e2 : AGExpr) :
+  let sum zero add zs :=
+    match zs with cons z zs => List.fold_left add zs z | nil => zero end
+  in
+  (forall zero add vm', zero = zeroG -> add = addG -> vm' = vm ->
+   let norm := ZMnorm (AGAdd e1 (AGOpp e2)) in
+   let '(xs, ys) := ZMsimpl_aux vm' norm in
+   sum zero add xs = sum zero add ys) ->
+  AGeval vm e1 = AGeval vm e2.
+Proof.
+set (e := AGAdd e1 (AGOpp e2)).
+intros sum H; generalize (H _ _ _ eq_refl eq_refl eq_refl); clear H; cbv zeta.
+case_eq (ZMsimpl_aux vm (ZMnorm e)); intros xs ys simplE Hsum.
+rewrite <- (addx0 (AGeval vm e1)), <- (add0x (AGeval vm e2)).
+rewrite <- (addNx (AGeval vm e2)), addA at 1; f_equal.
+change (addG (AGeval vm e1) (oppG (AGeval vm e2))) with (AGeval vm e).
+rewrite <- ZM_norm_subst.
+replace zeroG with (addG (sum zeroG addG xs) (oppG (sum zeroG addG ys)))
+  by now rewrite Hsum; rewrite addxN.
+assert (sumE : forall zs, sum zeroG addG zs = List.fold_right addG zeroG zs).
+  destruct zs as [|z zs]; simpl; trivial.
+  revert z; induction zs as [|z' zs IHzs]; intro z; simpl.
+    now rewrite addx0.
+  now rewrite IHzs, addA.
+rewrite !sumE; clear sum Hsum sumE; revert vm xs ys simplE.
+induction (ZMnorm e) as [|z zs IHzs]; destruct vm as [|v vm]; intros xs ys.
+- now intro H; injection H; intros; subst; simpl; rewrite addxN.
+- now intro H; injection H; intros; subst; simpl; rewrite addxN.
+- now destruct z; intro H; injection H; intros; subst; simpl; rewrite addxN.
+- destruct z as [|p|p]; simpl; [rewrite add0x; apply IHzs| |].
+    generalize (IHzs vm); clear IHzs.
+    destruct (ZMsimpl_aux vm zs) as [xs' ys']; intro IHzs.
+    rewrite (IHzs xs' ys' eq_refl); intro H; injection H; clear H IHzs.
+    intros; subst xs ys; rewrite addA, !Pos2Nat.inj_iter; f_equal.
+    induction (Pos.to_nat p) as [|n IHn]; simpl; [now rewrite add0x |].
+    now rewrite addAC, IHn, (addC v).
+  generalize (IHzs vm); clear IHzs.
+  destruct (ZMsimpl_aux vm zs) as [xs' ys']; intro IHzs.
+  rewrite (IHzs xs' ys' eq_refl); intro H; injection H; clear H IHzs.
+  intros; subst xs ys; rewrite addCA, <- oppD, !Pos2Nat.inj_iter.
+  f_equal; f_equal.
+  induction (Pos.to_nat p) as [|n IHn]; simpl; [now rewrite add0x |].
+  now rewrite addAC, IHn, (addC v).
+Qed.
+
 End AGeval.
 
+(* the reflection lemmas specialized to binary integers Z *)
 Fact ZM_correct_Z (vm : list Z) (e1 e2 : AGExpr) :
-  all (Z.eqb 0) (ZMnorm (AGAdd e1 (AGOpp e2))) = true ->
+  List.forallb (Z.eqb 0) (ZMnorm (AGAdd e1 (AGOpp e2))) = true ->
   AGeval Z0 Z.opp Z.add vm e1 = AGeval Z0 Z.opp Z.add vm e2.
 Proof.
 now apply (ZM_correct _ _ _ Z.add_assoc Z.add_comm Z.add_0_l Z.add_opp_diag_l).
+Qed.
+
+Lemma ZMsimpl_correct_Z (vm : list Z) (e1 e2 : AGExpr) :
+  let sum zero add zs :=
+    match zs with cons z zs => List.fold_left add zs z | nil => zero end
+  in
+  (forall zero add vm', zero = Z0 -> add = Z.add -> vm' = vm ->
+   let norm := ZMnorm (AGAdd e1 (AGOpp e2)) in
+   let '(xs, ys) := ZMsimpl_aux vm' norm in
+   sum zero add xs = sum zero add ys) ->
+  AGeval Z0 Z.opp Z.add vm e1 = AGeval Z0 Z.opp Z.add vm e2.
+Proof.
+now apply
+  (ZMsimpl_correct _ _ _ Z.add_assoc Z.add_comm Z.add_0_l Z.add_opp_diag_l).
 Qed.
 
 Strategy expand [AGeval].
