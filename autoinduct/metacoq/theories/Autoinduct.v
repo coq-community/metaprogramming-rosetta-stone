@@ -12,22 +12,35 @@ Fixpoint decompose_lam_assum (Γ : context) (t : term) : context * term :=
   | _ => (Γ, t)
   end.
 
+Ltac metacoq_run p f :=
+  run_template_program (t <- tmQuoteRec f ;;
+                        a <- tmEval lazy (p t) ;;
+                        tmUnquote a)
+                       (fun x => let t := eval unfold my_projT2 in (my_projT2 x) in exact t).
+
+Definition drop_quantification t :=
+  snd (decompose_prod_assum [] t).
+
 Definition autoinduct (p : program) : term :=
   let (Σ, t) := p in
   (* decompose into head and arguments *)
   let (hd, args) := decompose_app t in
-  let (n, hd') := match hd with
-             | tConst kn _ => match lookup_constant Σ kn with
-                             | Some b => match b.(cst_body) with
-                                        | Some b => let (lambdas, rhd) := decompose_lam_assum [] b in
-                                                   (List.length lambdas, rhd)
-                                        | None => (0, tVar "error: constant has no body")
-                                        end
-                             | None => (0, tVar "error: constant not declared")
-                             end
-             | x => (0, x)
-             end in
-  match hd' with
+  (* unfold constant *)
+  let hd' :=
+    match hd with
+    | tConst kn _ =>
+        match lookup_constant Σ kn with
+        | Some b => match b.(cst_body) with
+                   | Some b => b
+                   | None => tVar "error: constant has no body"
+                   end
+        | None => tVar "error: constant not declared"
+        end
+    | x => x
+    end in
+  let (lambdas, rhd) := decompose_lam_assum [] hd' in
+  let n := List.length lambdas in
+  match rhd with
   | tFix mfix idx =>
       match nth_error mfix idx with
       | Some f => match nth_error args (n + f.(rarg)) with
@@ -41,11 +54,15 @@ Definition autoinduct (p : program) : term :=
 
 (* Tactic for Step 1 *)
 Tactic Notation "autoinduct1" "on" constr(f) :=
-  run_template_program (t <- tmQuoteRec f ;;
-                        a <- tmEval lazy (autoinduct t) ;;
-                        tmUnquote a)
-    (fun x => let t := eval unfold my_projT2 in (my_projT2 x) in
-             induction t).
+  let x := constr:(ltac:(metacoq_run autoinduct f)) in
+  induction x.
+
+Lemma test1 : forall n, n + 0 = n.
+Proof.
+  intros.
+  autoinduct1 on (plus n 0).
+  all: cbn; congruence.
+Qed.
 
 (** * Step 2 *)
 
