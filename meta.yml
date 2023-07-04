@@ -1,0 +1,41 @@
+---
+fullname: Rosetta stone of metaprogramming in Coq
+shortname: metaprogramming-rosetta-stone
+organization: coq-community
+community: true
+
+synopsis: Examples of Coq tactics, plugins, etc., implemented in different metaprogramming languages
+
+description: |-
+  A rosetta stone for metaprogramming in Coq, with different examples
+  of tactics, plugins, etc., implemented in different metaprogramming
+  languages such as OCaml and Elpi.
+
+authors:
+- name: Enzo Crance
+- name: Davide Fissore
+- name: Yannick Forster
+- name: Gaëtan Gilbert
+- name: Talia Ringer
+- name: Michael Soegtrop
+- name: Enrico Tassi
+- name: Tomas Vallejos
+
+maintainers:
+- name: Yannick Forster
+  nickname: yforster
+
+license:
+  fullname: MIT License
+  identifier: MIT
+
+supported_coq_versions:
+  text: 8.17
+  opam: '{>= "8.17" & < "8.18~"}'
+
+build: |-
+  ## Building
+
+  See the README in each subdirectory for information about dependencies
+  and building instructions.
+---
