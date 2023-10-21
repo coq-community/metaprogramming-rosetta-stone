@@ -1,9 +1,18 @@
 Require Import Ltac2.Ltac2.
 
+(*
+We match the definition of the fixpoint to find the index of the
+structural argument. 
+Afterward, we extract the corresponding arguments from the applied form.
+For tactic 2 and 3, we search for a suitable function application.
+*)
+
+
 (* stdlib fail does enter so has type unit (indeed it doesn't fail if
    there are no focused goals) *)
 Ltac2 fail s := Control.backtrack_tactic_failure s.
 
+(* Computes the index of the structural index *)
 (* If you don't want to use Unsafe.kind, but can only handle fixpoints with 2 arguments *)
 Ltac2 naive_struct_arg (f : constr) : int :=
   lazy_match! f with
@@ -19,11 +28,18 @@ Ltac2 rec struct_arg (f : constr) : int :=
   | _ => fail "not a fixpoint"
   end.
 
+(* 
+Find an application of f in the goal. 
+Returns the structural argument of the applied form. 
+If f is None, acts on the first suitable function found.
+If f is Some, it has to be be a fair of the function and the index of the structural argument.
+*)
 Ltac2 find_applied (f : (constr * int) option) : constr :=
   match! goal with
   | [ |- context [ ?t ] ] =>
       match Constr.Unsafe.kind t with
       | Constr.Unsafe.App g args =>
+          (* index of the structural argument of g *)
           let farg :=
             match f with
             | Some (f,farg) =>
@@ -45,6 +61,7 @@ Ltac2 find_applied (f : (constr * int) option) : constr :=
       end
   end.
 
+(* Combination of the three autoinduct tactics. *)
 Ltac2 autoinduct0 (f: constr option) : unit :=
   let arg :=
     match f with
