@@ -16,6 +16,8 @@ Definition autoinduct (p : program) : term :=
   let (Σ, t) := p in
   (* decompose into head and arguments *)
   let (hd, args) := decompose_app t in
+  (* binder count, inner term (for a constant in environment) *)
+  (* allows for `autoinduct (f 3 5)` with `f := (fun a => e)` (e has to be a fixpoint) *)
   let (n, hd') := match hd with
              | tConst kn _ => match lookup_constant Σ kn with
                              | Some b => match b.(cst_body) with
@@ -27,6 +29,7 @@ Definition autoinduct (p : program) : term :=
                              end
              | x => (0, x)
              end in
+  (* lookup struct argument, extract from args *)
   match hd' with
   | tFix mfix idx =>
       match nth_error mfix idx with
@@ -48,6 +51,10 @@ Tactic Notation "autoinduct1" "on" constr(f) :=
              induction t).
 
 (** * Step 2 *)
+(*
+Go through the goal and find an application of f.
+Then proceed as with Step 1.
+*)
 
 Definition eq_const (c1 c2: term) : bool :=
   match c1, c2 with
@@ -68,6 +75,7 @@ Fixpoint find_cnst_in_args (f : term) (args : list term): term :=
   end.
 
 (* From a list of terms returns all the tApp nodes, including the ones appearing as arguments *)
+(* Nested recursion through lists are not natively recognized. Therefore, we need to disable the guard check. *)
 #[bypass_check(guard)]
   Fixpoint split_apps (ts : list term) : list term :=
   match ts with
@@ -108,6 +116,9 @@ Tactic Notation "autoinduct" "on" constr(f) :=
   end.
 
 (** * Step 3 *)
+(*
+Find any fixpoint, and proceed as with Step 1.
+*)
 
 (* Looks in the goal applications of fixpoints *)
 Definition find_fixpoints (ctx : program) : list term :=
