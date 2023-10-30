@@ -3,6 +3,8 @@
 This exercise amounts to implementing a tactic which performs induction on the right argument of a recursive function.
 The tactic was originally used in a course by T. Ringer, more information is [here](https://dependenttyp.es/classes/fa2022/artifacts/12-custom.html).
 
+A more detailed explanation and motivation is given in `ltac1`.
+
 ## Steps
 1. `autoinduct on (f a b).` should run `induction` on the recursive argument of `f`, in this case either `a` or `b`.
    1. `f` unfolds to a `fix`, like `Nat.plus` does
@@ -132,5 +134,15 @@ Requires: `coq-metacoq-template`
 <summary>expand</summary>
 
 Some details specific to the MetaCoq code.
+
+MetaCoq provides the structural argument in the fixpoint definition.
+We use this to extract the structural argument from the applied arguments.
+
+For tactic 2 and 3, we recursive through the quoted goal to find a suitable term.
+
+- `Autoinduct_Template` is the simplified version for tactic 1.
+- `Autoinduct` uses the same approach but considers additional cases and 
+implements all three tactics.
+
 
 </details>

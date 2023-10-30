@@ -3,8 +3,12 @@
  * proof automation intially.
  *
  * The biggest limitation of the Ltac approach is that we must limit
- * the number of arguments we can apply it to. We can't easily build
+ * the number of arguments we can apply it to (we limit them to 3). We can't easily build
  * a version of this tactic that works on arbitrarily many arguments.
+ * 
+ * We limit ourselves to the `autoinduct on (f a b)` form.
+ * With our tactic, we descend into the applications, forwarding the arguments.
+ * We chain the tactics using continuation passing style.
  *
  * We'll build on some tactics from StructTact, and also build a new tactic
  * in the style of StructTact. This imports the StructTact library so we can do that:
@@ -47,6 +51,7 @@ Module V1.
 (*
  * The first version of autoinduct makes some extra assumptions, but doesn't rely on
  * StructTact or anything else.
+ * Namely, we assume that the recursive argument is a variable to perform induction on.
  *)
 Ltac autoinduct1 f :=
   in_reduced_f f ltac:(fun x f =>
@@ -84,6 +89,8 @@ Module V2.
 (*
  * Our tactic makes a whole bunch of assumptions. With StructTact we can get rid of
  * some of them.
+ * We first remember constants and generalize the goal. 
+ * Doing so, we arrive at a suitable form of the recursive argument for induction.
  *)
 
 Ltac autoinduct1 f :=

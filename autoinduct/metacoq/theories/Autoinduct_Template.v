@@ -5,12 +5,22 @@ Require Import List.
 Import MCMonadNotation ListNotations.
 Open Scope bs.
 
+(*
+We implement the form 1 autoinduct tactic by looking up the recursive argument
+in the fixpoint definition and extracting it from the applied term.
+*)
+
+(* 
+Retrives the structural argument of an applied function `(f a b) -> b`
+We return a typed_term (a dependent pair of type and term).
+*)
 Definition autoinduct {A} (a : A) : TemplateMonad typed_term :=
   a' <- tmEval cbv a ;;
   (* get the inductive representation of a *)
   t <- tmQuote a' ;;
   (* decompose into head and arguments *)
   let (hd, args) := decompose_app t in
+  (* lookup the recursive argument from the definition and extract it from args *)
   match hd with
   | tFix mfix idx =>
       match nth_error mfix idx with
