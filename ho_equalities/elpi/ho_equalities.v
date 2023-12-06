@@ -20,7 +20,7 @@ Another method would have been to generate the hypothesis to prove and use a sma
 Ltac2 script to make the proof. Articulate proof steps in elpi is difficult so I
 would not recommand using a combination of elpi tactics to build a proof.
 I would rather generate the terms in elpi and then go outside the elpi world and use Ltac
-to prove them. 
+to prove them, or provide the proof term directly. 
 
 *)
 
@@ -33,20 +33,16 @@ Ltac myassert u :=
 Ltac myclear H := clear H.
 
 
-(** All elpi tactics start with these two vernacular commands: [Elpi tactic toto.] followed 
+(** All elpi tactics start with these two vernacular commands: [Elpi tactic foo.] followed 
 by [Elpi Accumulate lp:{{ some elpi code }}.]
 We can also accumulate separate elpi files but here the code 
 is small so keeping only one file is fine. 
 
 In elpi, we use the lambda-prolog language. Every elpi program
 is written as a combination of predicates, taking inputs or outputs.
-For instance, [get-head T T'] takes a term [T] as input and returns a term [T'] (the same one if it is not 
-an application, and its head otherwise)
 
 Each predicate is defined by its rules.
 On the left of the symbol [:-], we write the head of a rule, and on the right its premises. 
-Thus, [get-head (app [F|_]) R :- get-head F R] means that the output [R] is the head of the application of [F]
-to any arguments (so we use a wildcard) only if it is also the head of [F].
 
 The good thing with elpi is that we have access to the deep syntax of Coq terms 
 (contrary to Ltac1 if you remember our tedious tricks). 
@@ -54,10 +50,10 @@ The type [term], defined here:
 https://github.com/LPCIC/coq-elpi/blob/b92e2c85ecb6bb3d0eb0fbd57920d553b153e49c/elpi/coq-HOAS.elpi
 represents Coq terms. You can even extend it ! 
 
-The other very important thing is that you have quotations. In the code, you will see 
-an example: [{{ @eq }}], which is simply turning the Coq term for propositional equality
-into its elpi quotation. You can also use elpi antiquotation, for inserting elpi variables 
-into a Coq term, but we won't need this here.
+The other very important thing is that you have quotations. For
+example: [{{ nat }}], is simply transforming the Coq term nat
+into its elpi quotation. You can also use elpi antiquotation, to transform an elpi term of type term [T]
+into a Coq term, by using [lp:T]
 
 Another crucial point is that there is no such thing as a free variable in elpi. 
 It uses higher-order abstact syntax: to cross a binder, we need to introduce a fresh 
@@ -68,19 +64,16 @@ and [names L] which has as only argument [L] the list of all the eigenvariables 
 
 Elpi has two kinds of variables: unification variables (also called "metavariables"), 
 used to resolve the clauses which
-define elpi predicates and written with capital letters, and eigenvariables written is small letter
+define elpi predicates and usually written with capital letters, and eigenvariables written in small letters
 (and that you have to bind explicitely as we will see).
 
  *)
+
 Elpi Tactic eliminate_ho_eq.
 
 Elpi Accumulate lp:{{
   
   % I can introduce a one-line comment with a %
-
-  pred get-head i:term o:term. % [i:] means input and [o:] means output
-    get-head (app [F|_]) R :- get-head F R.
-    get-head T T.
 
   % This auxiliary predicate looks in the context of a goal (that is, its local definitions and hypotheses)
   % and returns the position of the term given as an input.
@@ -105,27 +98,26 @@ Elpi Accumulate lp:{{
       clear-with-pos _ _ _ :- coq.error "nothing to clear".
 
   % Here is our main predicate, generating the proof term of forall x1, ..., xn, f x1 ... xn = g x1 ... xn
-  % starting with a proof [H] of f = g, the terms f ([T1]) and g ([T2]), and their type.
-  % The first rule is the recursive case: we suppose that the functions given as 
-  % inputs are only partially applied (or not applied at all).
+  % starting with a proof [H] of f = g, the terms f ([T1]) and g ([T2]), their type and an accumulator.
+  % The first rule is the recursive case: we suppose that the accumulator does not contain all the xis.
   % Consequently, we bind a eigenvariable by using [pi x\ decl x Na Ty => ...] 
   % which means that we introduce an eigenvariable variable [x] which
   % has the name [Na] and the type [Ty]. Behind the [=>], we are allowed to write some code that mentions [x].
-  % So it is sufficent to make a recursive call in which we apply the functions and the resulting 
+  % So it is sufficent to make a recursive call in which we add the new variable to the accumulator and we apply the resulting 
   % proof term to the variable [x].
   % The second rule is the base case. We generate the proof term which is an application of [@eq_ind_r].
-  % We managed to find the exact form of the proof term by some trials and errors using Ltac's [refine].
-  % Instead of focusing of its hardly readable form, I suggest that you look at the use of elpi's predicates
-  % [names] and [occurs]. We needed to apply the function variable [y] on the correct arguments.
-  % To find them, we looked at all the eigenvariables of our program by using [names L], and then filter these to keep 
-  % only the ones in [T1] (remember that [T1] is precisely f x1 ... xn).
+  % We can live holes in the proof as the call to [refine] will fill them.
+  % The functons [T1] and [T2] are transformed into their applied version (we applied them to all 
+  % the eigenvariables generated by our recursive calls).
     
-  pred mk-proof-eq i: term i: term, i: term, i: term, o: term.
-    mk-proof-eq H T1 T2 (prod Na Ty F1) (fun Na Ty F2) :- 
-      pi x\ decl x Na Ty => mk-proof-eq H (app [T1, x]) (app [T2, x]) (F1 x) (F2 x).
-    mk-proof-eq H T1 T2 Codom
-      (app [{{@eq_ind_r}}, Ty', T2', (fun _ Ty' (y\ (app [{{ @eq }} , Codom, app [y | L'], T2]))), app [{{@eq_refl}}, Ty, T2], T1', H]) :-
-      get-head T1 T1', get-head T2 T2', coq.typecheck T1 Ty ok, coq.typecheck T1' Ty' ok,  names L, std.filter L (x\ occurs x T1) L'.
+  pred mk-proof-eq i: term i: term, i: term, i: term, i:list term, o: term.
+    mk-proof-eq H T1 T2 (prod Na Ty F1) Acc (fun Na Ty F2) :- 
+      pi x\ decl x Na Ty =>
+        mk-proof-eq H T1 T2 (F1 x) [x|Acc] (F2 x).
+    mk-proof-eq H T1 T2 _ Acc {{ @eq_ind_r _ lp:T2 lp:Predicate (eq_refl lp:T2Args) lp:T1 lp:H }} :-
+      std.rev Acc Args,
+      coq.mk-app T2 Args T2Args,
+      Predicate = {{ fun y => lp:{{ app[ {{y}} | Args] }} = lp:T2Args }}.
 
   % All elpi tactics must use the [solve] predicate. It takes a goal and returns the list of subgoals generated by the tactic.
   % Note that the goal given as input is open, that is, all the variables in the context are considered as eigenvariables.
@@ -144,7 +136,8 @@ Elpi Accumulate lp:{{
 
     std.do! % [std.do! L] tries to runs everything in [L] and never backtracks
     [coq.typecheck H (app [{{ @eq }}, Ty, T1, T2]) ok, % the given hypothesis should be of type [f = g] 
-     mk-proof-eq H T1 T2 Ty R1, % we build the proof term given the initial hypothesis, the functions and their types
+     mk-proof-eq H T1 T2 Ty [] R1, % we build the proof term given the initial hypothesis, the functions and their types
+     coq.typecheck R1 _ ok, % we typecheck R1 to fill the holes in the proof
      find-pos-in-context Ctx H 0 N, % we find the position of H in the context as we want to clear it in a new goal
      coq.ltac.call "myassert" [trm R1] Goal [NewGoal| _], % we add the proof term in the local context and we get a sealed-goal [NewGoal]
      coq.ltac.open (clear-with-pos (N + 1)) NewGoal NewGoals]. 
@@ -157,16 +150,13 @@ Elpi Typecheck.
 here, we use [ltac_term] but we also have [ltac_term_list] 
 if the tactic we defined takes several arguments *)
 
-Tactic Notation "eliminate_ho_eq" constr(t) :=
+Tactic Notation "eliminate_ho_eq" hyp(t) :=
   elpi eliminate_ho_eq ltac_term:(t).
 
 Section Tests.
 
-Variable (f : forall (A B : Type) (a : A) (b : B), A * B).
-Variable (g : forall (A B : Type) (a : A) (b : B), A * B).
-Variable (Heq : f = g).
-
-Goal False. 
+Goal forall (f g : forall (A B : Type) (a : A) (b : B), A * B), f = g -> False.
+intros f g Heq. 
 assert (H : length =
 fun A : Type =>
 fix length (l : list A) : nat :=
@@ -180,9 +170,7 @@ fix add (n m : nat) {struct n} : nat :=
   | 0 => m
   | S p => S (add p m)
   end) by reflexivity. eliminate_ho_eq H1.
-generalize Heq. intro Heq'. (* here, we have to generalize the section variable, as section variables do not appear 
-in the reified context of a Coq Goal in elpi. Otherwise, the call to clear will fail *)
-eliminate_ho_eq Heq'. 
+eliminate_ho_eq Heq. 
 Abort.
 
 End Tests.
